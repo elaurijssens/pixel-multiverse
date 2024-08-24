@@ -17,6 +17,7 @@ class PlasmaButtons:
         :param serial_port_path: The path to the serial port.
         :param refresh_rate: The refresh rate (times per second) for writing to the display.
         """
+        self.num_leds = num_leds
         # Initialize the button_leds byte array with 0's, ensuring all values are zeroed
         self.button_leds = bytearray([0] * (num_leds * 4))
         # Store the serial port path
@@ -30,19 +31,20 @@ class PlasmaButtons:
         # Start the refresh thread
         self._start_refresh_thread()
 
-    def set_led_data(self, led_number, rgbl: RGBl):
+    def set_all_leds_data(self, rgbl_values):
         """
-        Set the data for the specified LED in the button_leds array.
+        Set the data for all LEDs in one go.
 
-        :param led_number: The index of the LED to update.
-        :param rgbl: An RGBl NamedTuple with red, green, blue, and brightness values.
+        :param rgbl_values: A list of RGBl NamedTuple with red, green, blue, and brightness values.
         """
-        start_index = led_number * 4
-        with self._lock:  # Ensure thread safety when modifying the button_leds array
-            self.button_leds[start_index] = rgbl.blue  # Corrected to set blue first
-            self.button_leds[start_index + 1] = rgbl.green
-            self.button_leds[start_index + 2] = rgbl.red  # Corrected to set red last
-            self.button_leds[start_index + 3] = rgbl.brightness
+        with self._lock:
+            for i in range(self.num_leds):
+                start_index = i * 4
+                rgbl = rgbl_values[i]
+                self.button_leds[start_index] = rgbl.blue  # Corrected to set blue first
+                self.button_leds[start_index + 1] = rgbl.green
+                self.button_leds[start_index + 2] = rgbl.red  # Corrected to set red last
+                self.button_leds[start_index + 3] = rgbl.brightness
 
     def write_to_display(self):
         """
@@ -56,7 +58,6 @@ class PlasmaButtons:
         try:
             with serial.Serial(self.serial_port_path, baudrate=9600, timeout=1) as ser:
                 ser.write(data_to_send)
-                print(f"Data sent to {self.serial_port_path}")
         except serial.SerialException as e:
             print(f"Error opening serial port {self.serial_port_path}: {e}")
 
@@ -87,6 +88,44 @@ class PlasmaButtons:
         with self._lock:  # Ensure thread safety when accessing the button_leds array
             return str(list(self.button_leds))
 
+    def fade_effect(self, start_rgbl, end_rgbl, duration):
+        """
+        Create a fade effect from one color to another across all LEDs.
+
+        :param start_rgbl: The RGBl value to start the fade from.
+        :param end_rgbl: The RGBl value to end the fade at.
+        :param duration: The duration of the fade in seconds.
+        """
+        steps = int(self.refresh_rate * duration)
+        rgbl_values = []
+        for i in range(steps):
+            ratio = i / steps
+            current_rgbl = RGBl(
+                red=int(start_rgbl.red + (end_rgbl.red - start_rgbl.red) * ratio),
+                green=int(start_rgbl.green + (end_rgbl.green - start_rgbl.green) * ratio),
+                blue=int(start_rgbl.blue + (end_rgbl.blue - start_rgbl.blue) * ratio),
+                brightness=int(start_rgbl.brightness + (end_rgbl.brightness - start_rgbl.brightness) * ratio)
+            )
+            rgbl_values = [current_rgbl] * self.num_leds
+            self.set_all_leds_data(rgbl_values)
+            time.sleep(1 / self.refresh_rate)
+
+    def blink_effect(self, color1, color2, blink_rate, duration):
+        """
+        Create a blink effect between two colors.
+
+        :param color1: The first RGBl color.
+        :param color2: The second RGBl color.
+        :param blink_rate: The rate at which the LEDs should blink (times per second).
+        :param duration: The duration of the blinking effect in seconds.
+        """
+        total_blinks = int(duration * blink_rate)
+        for _ in range(total_blinks):
+            self.set_all_leds_data([color1] * self.num_leds)
+            time.sleep(1 / (2 * blink_rate))
+            self.set_all_leds_data([color2] * self.num_leds)
+            time.sleep(1 / (2 * blink_rate))
+
 
 # Example usage:
 num_leds = 128
@@ -96,14 +135,17 @@ refresh_rate = 60
 # Initialize the PlasmaButtons object
 plasma_buttons = PlasmaButtons(num_leds, serial_port_path, refresh_rate)
 
-# Create an RGBl object
-rgbl_values = RGBl(255, 0, 0, 64)
+# Create RGBl objects for the effects
+start_rgbl = RGBl(255, 0, 0, 64)
+end_rgbl = RGBl(0, 0, 255, 64)
+blink_color1 = RGBl(255, 255, 255, 64)
+blink_color2 = RGBl(0, 0, 0, 64)
 
-# Set data for the first LED
-plasma_buttons.set_led_data(0, rgbl_values)
+# Perform a fade effect
+plasma_buttons.fade_effect(start_rgbl, end_rgbl, duration=3)
 
-# Allow the program to run for a while before stopping (example)
-time.sleep(5)
+# Perform a blink effect
+plasma_buttons.blink_effect(blink_color1, blink_color2, blink_rate=2, duration=5)
 
 # Stop the refresh loop when done
 plasma_buttons.stop()
