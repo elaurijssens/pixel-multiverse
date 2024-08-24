@@ -39,9 +39,9 @@ class PlasmaButtons:
         """
         start_index = led_number * 4
         with self._lock:  # Ensure thread safety when modifying the button_leds array
-            self.button_leds[start_index] = rgbl.red
+            self.button_leds[start_index] = rgbl.blue  # Corrected to set blue first
             self.button_leds[start_index + 1] = rgbl.green
-            self.button_leds[start_index + 2] = rgbl.blue
+            self.button_leds[start_index + 2] = rgbl.red  # Corrected to set red last
             self.button_leds[start_index + 3] = rgbl.brightness
 
     def write_to_display(self):
@@ -97,7 +97,7 @@ refresh_rate = 60
 plasma_buttons = PlasmaButtons(num_leds, serial_port_path, refresh_rate)
 
 # Create an RGBl object
-rgbl_values = RGBl(255, 255, 255, 255)
+rgbl_values = RGBl(255, 0, 0, 64)
 
 # Set data for the first LED
 plasma_buttons.set_led_data(0, rgbl_values)
