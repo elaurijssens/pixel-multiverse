@@ -23,7 +23,7 @@ class PlasmaButtons:
     COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
     BRIGHTNESS_MASK = 0b00111111  # Mask to limit brightness values to a maximum of 63
 
-    def __init__(self, num_leds, serial_port_path, refresh_rate=60):
+    def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons", refresh_rate=60):
         """
         Initialize the PlasmaButtons class.
 
@@ -151,7 +151,7 @@ class PlasmaButtons:
 
         # Open the serial port and send the data
         try:
-            with serial.Serial(self.serial_port_path, baudrate=9600, timeout=1) as ser:
+            with serial.Serial(self.serial_port_path, baudrate=115200, timeout=1) as ser:  # Updated baud rate to 115200
                 ser.write(data_to_send)
         except serial.SerialException as e:
             print(f"Error opening serial port {self.serial_port_path}: {e}")
@@ -187,7 +187,7 @@ class PlasmaButtons:
 
 # Example usage:
 num_leds = 128
-serial_port_path = "/dev/plasmakeys"
+serial_port_path = "/dev/plasmabuttons"
 refresh_rate = 60
 
 # Initialize the PlasmaButtons object
