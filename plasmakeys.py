@@ -8,6 +8,8 @@ RGBl = namedtuple('RGBl', ['red', 'green', 'blue', 'brightness'])
 
 class PlasmaButtons:
     PREFIX = b"multiverse:data"
+    COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
+    BRIGHTNESS_MASK = 0b00111111  # Mask to limit brightness values to a maximum of 63
 
     def __init__(self, num_leds, serial_port_path, refresh_rate=60):
         """
@@ -41,18 +43,23 @@ class PlasmaButtons:
             for i in range(self.num_leds):
                 start_index = i * 4
                 rgbl = rgbl_values[i]
-                self.button_leds[start_index] = rgbl.blue  # Corrected to set blue first
-                self.button_leds[start_index + 1] = rgbl.green
-                self.button_leds[start_index + 2] = rgbl.red  # Corrected to set red last
-                self.button_leds[start_index + 3] = rgbl.brightness
+                self.button_leds[start_index] = rgbl.blue  # Set blue value
+                self.button_leds[start_index + 1] = rgbl.green  # Set green value
+                self.button_leds[start_index + 2] = rgbl.red  # Set red value
+                self.button_leds[start_index + 3] = rgbl.brightness  # Set brightness
 
     def write_to_display(self):
         """
-        Write the button_leds byte array to the display via the serial port.
+        Write the button_leds byte array to the display via the serial port, applying color and brightness masks.
         """
         with self._lock:  # Ensure thread safety when reading the button_leds array
+            # Apply color and brightness masks using bitwise AND
+            limited_leds = bytearray(
+                (value & self.COLOR_MASK) if index % 4 != 3 else (value & self.BRIGHTNESS_MASK)
+                for index, value in enumerate(self.button_leds)
+            )
             # Combine the prefix and button_leds data
-            data_to_send = self.PREFIX + self.button_leds
+            data_to_send = self.PREFIX + limited_leds
 
         # Open the serial port and send the data
         try:
@@ -97,7 +104,6 @@ class PlasmaButtons:
         :param duration: The duration of the fade in seconds.
         """
         steps = int(self.refresh_rate * duration)
-        rgbl_values = []
         for i in range(steps):
             ratio = i / steps
             current_rgbl = RGBl(
@@ -129,7 +135,7 @@ class PlasmaButtons:
 
 # Example usage:
 num_leds = 128
-serial_port_path = "/dev/ttyACM0"
+serial_port_path = "/dev/plasmakeys"
 refresh_rate = 60
 
 # Initialize the PlasmaButtons object
