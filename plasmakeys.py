@@ -6,6 +6,18 @@ from collections import namedtuple
 # Define a NamedTuple for RGBl
 RGBl = namedtuple('RGBl', ['red', 'green', 'blue', 'brightness'])
 
+class LEDStatus:
+    def __init__(self):
+        # Default to normal mode with a black color
+        self.mode = 'normal'
+        self.color = RGBl(0, 0, 0, 0)
+        self.color_off = RGBl(0, 0, 0, 0)
+        self.blink_rate = 0
+        self.fade_to = RGBl(0, 0, 0, 0)
+        self.fade_time = 0
+        self.ticks_since_last_transition = 0
+        self.start_from = RGBl(0, 0, 0, 0)
+
 class PlasmaButtons:
     PREFIX = b"multiverse:data"
     COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
@@ -26,6 +38,8 @@ class PlasmaButtons:
         self.serial_port_path = serial_port_path
         # Set the refresh rate
         self.refresh_rate = refresh_rate
+        # Initialize LED statuses
+        self.led_statuses = [LEDStatus() for _ in range(num_leds)]
         # Create a threading event to control the refresh loop
         self._stop_event = threading.Event()
         # Create a lock for thread safety
@@ -33,33 +47,107 @@ class PlasmaButtons:
         # Start the refresh thread
         self._start_refresh_thread()
 
-    def set_all_leds_data(self, rgbl_values):
+    def set_led_mode(self, led_number, mode, **kwargs):
         """
-        Set the data for all LEDs in one go.
+        Set the mode and parameters for a specific LED.
 
-        :param rgbl_values: A list of RGBl NamedTuple with red, green, blue, and brightness values.
+        :param led_number: The index of the LED to update.
+        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
+        :param kwargs: Additional parameters based on the mode.
+        """
+        led_status = self.led_statuses[led_number]
+        with self._lock:
+            led_status.mode = mode
+            if mode == 'normal':
+                led_status.color = kwargs.get('color', led_status.color)
+            elif mode in ['blink', 'sync blink']:
+                led_status.color = kwargs.get('color', led_status.color)
+                led_status.color_off = kwargs.get('color_off', led_status.color)
+                led_status.blink_rate = kwargs.get('blink_rate', led_status.blink_rate)
+                led_status.ticks_since_last_transition = 0
+            elif mode == 'fade':
+                led_status.start_from = kwargs.get('start_from', led_status.color)
+                led_status.fade_to = kwargs.get('fade_to', led_status.fade_to)
+                led_status.fade_time = kwargs.get('fade_time', led_status.fade_time)
+                led_status.ticks_since_last_transition = 0
+            elif mode == 'fade sweep':
+                led_status.start_from = kwargs.get('start_from', led_status.color)
+                led_status.fade_to = kwargs.get('fade_to', led_status.fade_to)
+                led_status.fade_time = kwargs.get('fade_time', led_status.fade_time)
+                led_status.ticks_since_last_transition = 0
+
+    def set_button_mode(self, button_number, mode, **kwargs):
+        """
+        Set the mode and parameters for all LEDs in a button.
+
+        :param button_number: The index of the button to update.
+        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
+        :param kwargs: Additional parameters based on the mode.
+        """
+        for i in range(button_number * 4, (button_number + 1) * 4):
+            self.set_led_mode(i, mode, **kwargs)
+
+    def _calculate_color(self, led_number):
+        """
+        Calculate the color of the LED based on its status and elapsed ticks.
+
+        :param led_number: The index of the LED.
+        """
+        led_status = self.led_statuses[led_number]
+        ticks = led_status.ticks_since_last_transition
+        if led_status.mode == 'normal':
+            return led_status.color
+        elif led_status.mode == 'blink':
+            cycle_length = self.refresh_rate / led_status.blink_rate
+            if (ticks % cycle_length) < (cycle_length / 2):
+                return led_status.color
+            else:
+                return led_status.color_off
+        elif led_status.mode == 'sync blink':
+            cycle_length = self.refresh_rate / led_status.blink_rate
+            if (ticks % cycle_length) < (cycle_length / 2):
+                return led_status.color
+            else:
+                return led_status.color_off
+        elif led_status.mode == 'fade':
+            ratio = min(ticks / (self.refresh_rate * led_status.fade_time), 1)
+            red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
+            green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
+            blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
+            brightness = int(led_status.start_from.brightness + (led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            return RGBl(red, green, blue, brightness)
+        elif led_status.mode == 'fade sweep':
+            half_time = self.refresh_rate * led_status.fade_time / 2
+            if ticks < half_time:
+                ratio = ticks / half_time
+            else:
+                ratio = (2 - (ticks / half_time)) if ticks < 2 * half_time else 0
+            red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
+            green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
+            blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
+            brightness = int(led_status.start_from.brightness + (led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            return RGBl(red, green, blue, brightness)
+
+    def _update_led_colors(self):
+        """
+        Update all LED colors based on their statuses.
         """
         with self._lock:
             for i in range(self.num_leds):
+                self.led_statuses[i].ticks_since_last_transition += 1
+                current_color = self._calculate_color(i)
                 start_index = i * 4
-                rgbl = rgbl_values[i]
-                self.button_leds[start_index] = rgbl.blue  # Set blue value
-                self.button_leds[start_index + 1] = rgbl.green  # Set green value
-                self.button_leds[start_index + 2] = rgbl.red  # Set red value
-                self.button_leds[start_index + 3] = rgbl.brightness  # Set brightness
+                self.button_leds[start_index] = current_color.blue & self.COLOR_MASK
+                self.button_leds[start_index + 1] = current_color.green & self.COLOR_MASK
+                self.button_leds[start_index + 2] = current_color.red & self.COLOR_MASK
+                self.button_leds[start_index + 3] = current_color.brightness & self.BRIGHTNESS_MASK
 
     def write_to_display(self):
         """
-        Write the button_leds byte array to the display via the serial port, applying color and brightness masks.
+        Write the button_leds byte array to the display via the serial port.
         """
         with self._lock:  # Ensure thread safety when reading the button_leds array
-            # Apply color and brightness masks using bitwise AND
-            limited_leds = bytearray(
-                (value & self.COLOR_MASK) if index % 4 != 3 else (value & self.BRIGHTNESS_MASK)
-                for index, value in enumerate(self.button_leds)
-            )
-            # Combine the prefix and button_leds data
-            data_to_send = self.PREFIX + limited_leds
+            data_to_send = self.PREFIX + self.button_leds
 
         # Open the serial port and send the data
         try:
@@ -73,6 +161,7 @@ class PlasmaButtons:
         Continuously refresh the display at the specified refresh rate.
         """
         while not self._stop_event.is_set():
+            self._update_led_colors()
             self.write_to_display()
             time.sleep(1 / self.refresh_rate)
 
@@ -95,43 +184,6 @@ class PlasmaButtons:
         with self._lock:  # Ensure thread safety when accessing the button_leds array
             return str(list(self.button_leds))
 
-    def fade_effect(self, start_rgbl, end_rgbl, duration):
-        """
-        Create a fade effect from one color to another across all LEDs.
-
-        :param start_rgbl: The RGBl value to start the fade from.
-        :param end_rgbl: The RGBl value to end the fade at.
-        :param duration: The duration of the fade in seconds.
-        """
-        steps = int(self.refresh_rate * duration)
-        for i in range(steps):
-            ratio = i / steps
-            current_rgbl = RGBl(
-                red=int(start_rgbl.red + (end_rgbl.red - start_rgbl.red) * ratio),
-                green=int(start_rgbl.green + (end_rgbl.green - start_rgbl.green) * ratio),
-                blue=int(start_rgbl.blue + (end_rgbl.blue - start_rgbl.blue) * ratio),
-                brightness=int(start_rgbl.brightness + (end_rgbl.brightness - start_rgbl.brightness) * ratio)
-            )
-            rgbl_values = [current_rgbl] * self.num_leds
-            self.set_all_leds_data(rgbl_values)
-            time.sleep(1 / self.refresh_rate)
-
-    def blink_effect(self, color1, color2, blink_rate, duration):
-        """
-        Create a blink effect between two colors.
-
-        :param color1: The first RGBl color.
-        :param color2: The second RGBl color.
-        :param blink_rate: The rate at which the LEDs should blink (times per second).
-        :param duration: The duration of the blinking effect in seconds.
-        """
-        total_blinks = int(duration * blink_rate)
-        for _ in range(total_blinks):
-            self.set_all_leds_data([color1] * self.num_leds)
-            time.sleep(1 / (2 * blink_rate))
-            self.set_all_leds_data([color2] * self.num_leds)
-            time.sleep(1 / (2 * blink_rate))
-
 
 # Example usage:
 num_leds = 128
@@ -141,17 +193,14 @@ refresh_rate = 60
 # Initialize the PlasmaButtons object
 plasma_buttons = PlasmaButtons(num_leds, serial_port_path, refresh_rate)
 
-# Create RGBl objects for the effects
-start_rgbl = RGBl(255, 0, 0, 64)
-end_rgbl = RGBl(0, 0, 255, 64)
-blink_color1 = RGBl(255, 255, 255, 64)
-blink_color2 = RGBl(0, 0, 0, 64)
+# Set LED 0 to blink mode
+plasma_buttons.set_led_mode(0, 'blink', color=RGBl(255, 0, 0, 64), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
 
-# Perform a fade effect
-plasma_buttons.fade_effect(start_rgbl, end_rgbl, duration=3)
+# Set Button 1 (LEDs 4-7) to fade mode
+plasma_buttons.set_button_mode(1, 'fade', fade_to=RGBl(0, 255, 0, 64), fade_time=3)
 
-# Perform a blink effect
-plasma_buttons.blink_effect(blink_color1, blink_color2, blink_rate=2, duration=5)
+# Allow the program to run for a while before stopping (example)
+time.sleep(5)
 
 # Stop the refresh loop when done
 plasma_buttons.stop()
