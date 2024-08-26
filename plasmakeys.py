@@ -23,7 +23,7 @@ class PlasmaButtons:
     COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
     BRIGHTNESS_MASK = 0b00001111  # Mask to limit brightness values to a maximum of 15
 
-    def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons", refresh_rate=60, button_map=None):
+    def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons", refresh_rate=60, button_map=None, coord_map=None):
         """
         Initialize the PlasmaButtons class.
 
@@ -31,6 +31,7 @@ class PlasmaButtons:
         :param serial_port_path: The path to the serial port.
         :param refresh_rate: The refresh rate (times per second) for writing to the display.
         :param button_map: An optional dictionary mapping button labels to button numbers.
+        :param coord_map: An optional dictionary mapping integer coordinates to LED indices.
         """
         self.num_leds = num_leds
         # Initialize the button_leds byte array with 0's, ensuring all values are zeroed
@@ -43,6 +44,8 @@ class PlasmaButtons:
         self.led_statuses = [LEDStatus() for _ in range(num_leds)]
         # Initialize button mapping if provided
         self.button_map = button_map if button_map is not None else {}
+        # Initialize coordinate mapping if provided
+        self.coord_map = coord_map if coord_map is not None else {}
         # Create a threading event to control the refresh loop
         self._stop_event = threading.Event()
         # Create a lock for thread safety
@@ -107,6 +110,22 @@ class PlasmaButtons:
             self.set_button_mode(button_number, mode, **kwargs)
         else:
             print(f"Button label '{button_label}' not found in button map or no map provided.")
+
+    def set_led_mode_by_coord(self, coord, mode, **kwargs):
+        """
+        Set the mode and parameters for a specific LED by world coordinate.
+
+        :param coord: A tuple representing the (x, y) coordinate of the LED.
+        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
+        :param kwargs: Additional parameters based on the mode.
+        """
+        # Check if the coordinate exists in the mapping
+        if self.coord_map and coord in self.coord_map:
+            led_number = self.coord_map[coord]
+            # Use the existing method to set LED mode by LED number
+            self.set_led_mode(led_number, mode, **kwargs)
+        else:
+            print(f"Coordinate '{coord}' not found in coordinate map or no map provided.")
 
     def _calculate_color(self, led_number):
         """
@@ -247,16 +266,29 @@ button_map = {
     # ... other button mappings
 }
 
+# Define a coordinate map
+coord_map = {
+    (0, 0): 0,  # LED at (0, 0) corresponds to LED index 0
+    (1, 0): 1,  # LED at (1, 0) corresponds to LED index 1
+    (0, 1): 2,  # LED at (0, 1) corresponds to LED index 2
+    (1, 1): 3,  # LED at (1, 1) corresponds to LED index 3
+    # ... other coordinate mappings
+}
+
 num_leds = 128
 refresh_rate = 60
 serial_port = "/dev/plasmabuttons"
 
-# Initialize the PlasmaButtons object with the button map
-plasma_buttons = PlasmaButtons(num_leds, serial_port, refresh_rate, button_map)
+# Initialize the PlasmaButtons object with the button map and coordinate map
+plasma_buttons = PlasmaButtons(num_leds, serial_port, refresh_rate, button_map, coord_map)
 
 # Set LED modes using button labels
 plasma_buttons.set_button_mode_by_label('P1:A', 'blink', color=RGBl(63, 0, 0, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
 plasma_buttons.set_button_mode_by_label('P2:B', 'fade', fade_to=RGBl(0, 63, 0, 15), fade_time=2)
+
+# Set LED modes using coordinates
+plasma_buttons.set_led_mode_by_coord((0, 0), 'fade sweep', fade_to=RGBl(63, 0, 63, 15), fade_time=3)
+plasma_buttons.set_led_mode_by_coord((1, 0), 'normal', color=RGBl(0, 63, 63, 15))
 
 # Allow the program to run for a while before stopping (example)
 time.sleep(30)
