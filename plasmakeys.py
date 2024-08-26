@@ -21,7 +21,7 @@ class LEDStatus:
 class PlasmaButtons:
     PREFIX = b"multiverse:data"
     COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
-    BRIGHTNESS_MASK = 0b00111111  # Mask to limit brightness values to a maximum of 63
+    BRIGHTNESS_MASK = 0b00001111  # Mask to limit brightness values to a maximum of 15
 
     def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons", refresh_rate=60):
         """
@@ -95,37 +95,60 @@ class PlasmaButtons:
         """
         led_status = self.led_statuses[led_number]
         ticks = led_status.ticks_since_last_transition
+
         if led_status.mode == 'normal':
             return led_status.color
+
         elif led_status.mode == 'blink':
             cycle_length = self.refresh_rate / led_status.blink_rate
             if (ticks % cycle_length) < (cycle_length / 2):
                 return led_status.color
             else:
                 return led_status.color_off
+
         elif led_status.mode == 'sync blink':
             cycle_length = self.refresh_rate / led_status.blink_rate
             if (ticks % cycle_length) < (cycle_length / 2):
                 return led_status.color
             else:
                 return led_status.color_off
+
         elif led_status.mode == 'fade':
-            ratio = min(ticks / (self.refresh_rate * led_status.fade_time), 1)
+            total_ticks_for_fade = self.refresh_rate * led_status.fade_time
+            if ticks >= total_ticks_for_fade:
+                # Fade is complete
+                self.set_led_mode(led_number, 'normal', color=led_status.fade_to)
+                return led_status.fade_to
+
+            ratio = ticks / total_ticks_for_fade
             red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
             green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
             blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
-            brightness = int(led_status.start_from.brightness + (led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            brightness = int(led_status.start_from.brightness + (
+                        led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
             return RGBl(red, green, blue, brightness)
+
         elif led_status.mode == 'fade sweep':
-            half_time = self.refresh_rate * led_status.fade_time / 2
-            if ticks < half_time:
-                ratio = ticks / half_time
+            total_ticks_for_fade = self.refresh_rate * led_status.fade_time
+            half_time_ticks = total_ticks_for_fade / 2
+
+            if ticks >= total_ticks_for_fade:
+                # Sweep complete, reset ticks
+                led_status.ticks_since_last_transition = 0
+                return led_status.start_from
+
+            if ticks < half_time_ticks:
+                # Fading in
+                ratio = ticks / half_time_ticks
             else:
-                ratio = (2 - (ticks / half_time)) if ticks < 2 * half_time else 0
+                # Fading out
+                ratio = (total_ticks_for_fade - ticks) / half_time_ticks
+
             red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
             green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
             blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
-            brightness = int(led_status.start_from.brightness + (led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            brightness = int(led_status.start_from.brightness + (
+                        led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
             return RGBl(red, green, blue, brightness)
 
     def _update_led_colors(self):
@@ -187,20 +210,43 @@ class PlasmaButtons:
 
 # Example usage:
 num_leds = 128
-serial_port_path = "/dev/plasmabuttons"
 refresh_rate = 60
 
-# Initialize the PlasmaButtons object
-plasma_buttons = PlasmaButtons(num_leds, serial_port_path, refresh_rate)
+# Initialize the PlasmaButtons object with updated serial port and baud rate
+plasma_buttons = PlasmaButtons(num_leds, "/dev/plasmabuttons", refresh_rate)
 
 # Set LED 0 to blink mode
-plasma_buttons.set_led_mode(0, 'blink', color=RGBl(255, 0, 0, 64), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+plasma_buttons.set_button_mode(1, 'fade sweep', fade_to=RGBl(63, 63, 0, 15), fade_time=1)
 
 # Set Button 1 (LEDs 4-7) to fade mode
-plasma_buttons.set_button_mode(1, 'fade', fade_to=RGBl(0, 255, 0, 64), fade_time=3)
+plasma_buttons.set_button_mode(0, 'fade sweep', fade_to=RGBl(0, 63, 0, 15), fade_time=1)
 
+plasma_buttons.set_button_mode(2, 'fade sweep', fade_to=RGBl(0, 0, 63, 15), fade_time=1)
+
+plasma_buttons.set_button_mode(3, 'fade', fade_to=RGBl(63, 0, 63, 15), fade_time=2)
+
+plasma_buttons.set_button_mode(4, 'fade', fade_to=RGBl(0, 63, 63, 15), fade_time=2)
+
+plasma_buttons.set_button_mode(5, 'fade', fade_to=RGBl(63, 63, 0, 15), fade_time=2)
+
+plasma_buttons.set_button_mode(6, 'fade', fade_to=RGBl(63, 63, 63, 15), fade_time=2)
+
+plasma_buttons.set_button_mode(7, 'blink', color=RGBl(63, 0, 0, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(8, 'blink', color=RGBl(0, 63, 0, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(9, 'blink', color=RGBl(0, 0, 63, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(10, 'blink', color=RGBl(63, 63, 0, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(11, 'blink', color=RGBl(63, 0, 63, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(12, 'blink', color=RGBl(0, 63, 63, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
+
+plasma_buttons.set_button_mode(13, 'blink', color=RGBl(63, 63, 63, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
 # Allow the program to run for a while before stopping (example)
-time.sleep(5)
+time.sleep(30)
+
 
 # Stop the refresh loop when done
 plasma_buttons.stop()
