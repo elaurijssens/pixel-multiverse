@@ -10,13 +10,10 @@ class LEDStatus:
     def __init__(self):
         # Initialize LED status to default values
         self.mode = 'normal'  # Mode of operation ('normal', 'blink', 'sync blink', 'fade', 'fade sweep')
-        self.color = RGBl(0, 0, 0, 0)  # Color in normal mode
-        self.color_off = RGBl(0, 0, 0, 0)  # Off color for blinking modes
-        self.blink_rate = 0  # Blinks per second for blinking modes
-        self.fade_to = RGBl(0, 0, 0, 0)  # Target color for fade modes
-        self.fade_time = 0  # Duration of the fade in seconds
+        self.color_from = RGBl(0, 0, 0, 0)  # Off color for blinking modes, start color for fade modes
+        self.transition_time = 0  # Blinks per second for blinking modes
+        self.color_to = RGBl(0, 0, 0, 0)  # Normal color, target color for fade modes, blink color for blink modes
         self.ticks_since_last_transition = 0  # Ticks since the last transition for timing calculations
-        self.start_from = RGBl(0, 0, 0, 0)  # Starting color for fade modes
 
 class PlasmaButtons:
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
@@ -66,21 +63,21 @@ class PlasmaButtons:
         led_status.mode = mode  # Set the mode
         # Set parameters based on the mode
         if mode == 'normal':
-            led_status.color = kwargs.get('color', led_status.color)
-        elif mode in ['blink', 'sync blink']:
-            led_status.color = kwargs.get('color', led_status.color)
-            led_status.color_off = kwargs.get('color_off', led_status.color)
-            led_status.blink_rate = kwargs.get('blink_rate', led_status.blink_rate)
+            led_status.color_to = kwargs.get('color_to', led_status.color_to)
+        elif mode == 'blink':
+            led_status.color_from = kwargs.get('color_from', led_status.color_to)
+            led_status.color_to = kwargs.get('color_to', led_status.color_to)
+            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
             led_status.ticks_since_last_transition = 0  # Reset tick counter
         elif mode == 'fade':
-            led_status.start_from = kwargs.get('start_from', led_status.color)
-            led_status.fade_to = kwargs.get('fade_to', led_status.fade_to)
-            led_status.fade_time = kwargs.get('fade_time', led_status.fade_time)
+            led_status.color_from = kwargs.get('color_from', led_status.color_to)
+            led_status.color_to = kwargs.get('color_to', led_status.color_to)
+            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
             led_status.ticks_since_last_transition = 0  # Reset tick counter
         elif mode == 'fade sweep':
-            led_status.start_from = kwargs.get('start_from', led_status.color)
-            led_status.fade_to = kwargs.get('fade_to', led_status.fade_to)
-            led_status.fade_time = kwargs.get('fade_time', led_status.fade_time)
+            led_status.color_from = kwargs.get('color_from', led_status.color_to)
+            led_status.color_to = kwargs.get('color_to', led_status.color_to)
+            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
             led_status.ticks_since_last_transition = 0  # Reset tick counter
 
     def set_button_mode(self, button_number, mode, **kwargs):
@@ -141,54 +138,47 @@ class PlasmaButtons:
 
         # Determine the color based on the mode
         if led_status.mode == 'normal':
-            return led_status.color
+            return led_status.color_to
         elif led_status.mode == 'blink':
             # Calculate blink status based on ticks
-            cycle_length = self.refresh_rate / led_status.blink_rate
+            cycle_length = self.refresh_rate * led_status.transition_time
             if (ticks % cycle_length) < (cycle_length / 2):
-                return led_status.color
+                return led_status.color_to
             else:
-                return led_status.color_off
-        elif led_status.mode == 'sync blink':
-            # Calculate sync blink status based on ticks
-            cycle_length = self.refresh_rate / led_status.blink_rate
-            if (ticks % cycle_length) < (cycle_length / 2):
-                return led_status.color
-            else:
-                return led_status.color_off
+                return led_status.color_from
         elif led_status.mode == 'fade':
             # Calculate fade status based on ticks
-            total_ticks_for_fade = self.refresh_rate * led_status.fade_time
+            total_ticks_for_fade = self.refresh_rate * led_status.transition_time
             if ticks >= total_ticks_for_fade:
                 # Fade is complete, switch to normal mode with final color
-                self.set_led_mode(led_number, 'normal', color=led_status.fade_to)
-                return led_status.fade_to
+                self.set_led_mode(led_number, 'normal', color_to=led_status.color_to)
+                return led_status.color_to
             # Calculate intermediate color during fade
             ratio = ticks / total_ticks_for_fade
-            red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
-            green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
-            blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
-            brightness = int(led_status.start_from.brightness + (
-                    led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            red = int(led_status.color_from.red + (led_status.color_to.red - led_status.color_from.red) * ratio)
+            green = int(led_status.color_from.green + (led_status.color_to.green - led_status.color_from.green) * ratio)
+            blue = int(led_status.color_from.blue + (led_status.color_to.blue - led_status.color_from.blue) * ratio)
+            brightness = int(led_status.color_from.brightness + (
+                    led_status.color_to.brightness - led_status.color_from.brightness) * ratio)
             return RGBl(red, green, blue, brightness)
         elif led_status.mode == 'fade sweep':
             # Calculate fade sweep status based on ticks
-            total_ticks_for_fade = self.refresh_rate * led_status.fade_time
+            total_ticks_for_fade = self.refresh_rate * led_status.transition_time
             half_time_ticks = total_ticks_for_fade / 2
             if ticks >= total_ticks_for_fade:
                 # Sweep complete, reset ticks
                 led_status.ticks_since_last_transition = 0
-                return led_status.start_from
+                return led_status.color_from
             # Calculate intermediate color during fade sweep
             if ticks < half_time_ticks:
                 ratio = ticks / half_time_ticks
             else:
                 ratio = (total_ticks_for_fade - ticks) / half_time_ticks
-            red = int(led_status.start_from.red + (led_status.fade_to.red - led_status.start_from.red) * ratio)
-            green = int(led_status.start_from.green + (led_status.fade_to.green - led_status.start_from.green) * ratio)
-            blue = int(led_status.start_from.blue + (led_status.fade_to.blue - led_status.start_from.blue) * ratio)
-            brightness = int(led_status.start_from.brightness + (
-                    led_status.fade_to.brightness - led_status.start_from.brightness) * ratio)
+            red = int(led_status.color_from.red + (led_status.color_to.red - led_status.color_from.red) * ratio)
+            green = int(led_status.color_from.green + (led_status.color_to.green - led_status.color_from.green) * ratio)
+            blue = int(led_status.color_from.blue + (led_status.color_to.blue - led_status.color_from.blue) * ratio)
+            brightness = int(led_status.color_from.brightness + (
+                    led_status.color_to.brightness - led_status.color_from.brightness) * ratio)
             return RGBl(red, green, blue, brightness)
 
     def _update_led_colors(self):
@@ -258,13 +248,10 @@ class PlasmaButtons:
 # Example usage:
 
 # Define a button map
-button_map = {
-    'P1:A': 0,
-    'P1:B': 1,
-    'P2:A': 2,
-    'P2:B': 3,
-    # ... other button mappings
-}
+button_map = {'P1:START': 14, 'P1:A': 13, 'P1:B': 11, 'P1:X': 9, 'P1:Y': 7, 'P1:L1': 12, 'P1:L2': 15, 'P1:R1': 8, 
+              'P1:R2': 18, 'P1:SELECT': 10, 'P1:L3': 16, 'P1:R3': 17, 'P1:HOTKEY': 24, 'P1:X1': 29, 'P1:X2': 26, 
+              'P2:START': 19, 'P2:A': 6, 'P2:B': 4, 'P2:X': 2, 'P2:Y': 0, 'P2:L1': 5, 'P2:L2': 20, 'P2:R1': 1, 
+              'P2:R2': 23, 'P2:SELECT': 3, 'P2:L3': 21, 'P2:R3': 22, 'P2:HOTKEY': 25, 'P2:X1': 28, 'P2:X2': 27}
 
 # Define a coordinate map
 coord_map = {
@@ -282,16 +269,57 @@ serial_port = "/dev/plasmabuttons"
 # Initialize the PlasmaButtons object with the button map and coordinate map
 plasma_buttons = PlasmaButtons(num_leds, serial_port, refresh_rate, button_map, coord_map)
 
-# Set LED modes using button labels
-plasma_buttons.set_button_mode_by_label('P1:A', 'blink', color=RGBl(63, 0, 0, 15), color_off=RGBl(0, 0, 0, 0), blink_rate=2)
-plasma_buttons.set_button_mode_by_label('P2:B', 'fade', fade_to=RGBl(0, 63, 0, 15), fade_time=2)
+plasma_buttons.set_button_mode(0, 'blink', color_to=RGBl(0, 63, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(1, 'blink', color_to=RGBl(0, 0, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(2, 'blink', color_to=RGBl(63, 0, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(3, 'blink', color_to=RGBl(63, 63, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(4, 'blink', color_to=RGBl(0, 63, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(5, 'blink', color_to=RGBl(63, 0, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(6, 'blink', color_to=RGBl(63, 63, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(7, 'blink', color_from=RGBl(0, 63, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(8, 'blink', color_from=RGBl(0, 0, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(9, 'blink', color_from=RGBl(63, 0, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(10, 'blink', color_from=RGBl(63, 63, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(11, 'blink', color_from=RGBl(0, 63, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(12, 'blink', color_from=RGBl(63, 0, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
+plasma_buttons.set_button_mode(13, 'blink', color_from=RGBl(63, 63, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
 
-# Set LED modes using coordinates
-plasma_buttons.set_led_mode_by_coord((0, 0), 'fade sweep', fade_to=RGBl(63, 0, 63, 15), fade_time=3)
-plasma_buttons.set_led_mode_by_coord((1, 0), 'normal', color=RGBl(0, 63, 63, 15))
+time.sleep(3)
+
+plasma_buttons.set_button_mode(0, 'normal', color_to=RGBl(0, 63, 0, 15))
+plasma_buttons.set_button_mode(1, 'normal', color_to=RGBl(0, 0, 63, 15))
+plasma_buttons.set_button_mode(2, 'normal', color_to=RGBl(63, 0, 0, 15))
+plasma_buttons.set_button_mode(3, 'normal', color_to=RGBl(63, 63, 0, 15))
+plasma_buttons.set_button_mode(4, 'normal', color_to=RGBl(0, 63, 63, 15))
+plasma_buttons.set_button_mode(5, 'normal', color_to=RGBl(63, 0, 63, 15))
+plasma_buttons.set_button_mode(6, 'normal', color_to=RGBl(63, 63, 63, 15))
+plasma_buttons.set_button_mode(7, 'normal', color_to=RGBl(0, 63, 0, 15))
+plasma_buttons.set_button_mode(8, 'normal', color_to=RGBl(0, 0, 63, 15))
+plasma_buttons.set_button_mode(9, 'normal', color_to=RGBl(63, 0, 0, 15))
+plasma_buttons.set_button_mode(10, 'normal', color_to=RGBl(63, 63, 0, 15))
+plasma_buttons.set_button_mode(11, 'normal', color_to=RGBl(0, 63, 63, 15))
+plasma_buttons.set_button_mode(12, 'normal', color_to=RGBl(63, 0, 63, 15))
+plasma_buttons.set_button_mode(13, 'normal', color_to=RGBl(63, 63, 63, 15))
+
+time.sleep(3)
+
+plasma_buttons.set_button_mode(0, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(1, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(2, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(3, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(4, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(5, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(6, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(7, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(8, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(9, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(10, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(11, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(12, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
+plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
 
 # Allow the program to run for a while before stopping (example)
-time.sleep(30)
+time.sleep(300)
 
 # Stop the refresh loop when done
 plasma_buttons.stop()
