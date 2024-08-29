@@ -50,77 +50,85 @@ class PlasmaButtons:
         # Start the refresh thread
         self._start_refresh_thread()
 
-    def set_led_mode(self, led_number, mode, **kwargs):
+    def set_led_mode(self, led_number, mode, color_to=None, color_from=None, transition_time=None):
         """
         Set the mode and parameters for a specific LED.
 
         :param led_number: The index of the LED to update.
-        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
-        :param kwargs: Additional parameters based on the mode.
+        :param mode: The mode to set ('normal', 'blink', 'fade', 'fade sweep').
+        :param color_to: The target color or blink color.
+        :param color_from: The starting color for fade or off color for blinking.
+        :param transition_time: The transition time for fade or blink interval.
         """
         # Access the LED status for the given LED number
         led_status = self.led_statuses[led_number]
         led_status.mode = mode  # Set the mode
-        # Set parameters based on the mode
+
         if mode == 'normal':
-            led_status.color_to = kwargs.get('color_to', led_status.color_to)
+            led_status.color_to = color_to if color_to else RGBl(0, 0, 0, 0)
         elif mode == 'blink':
-            led_status.color_from = kwargs.get('color_from', led_status.color_to)
-            led_status.color_to = kwargs.get('color_to', led_status.color_to)
-            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
+            led_status.color_from = color_from if color_from else led_status.color_to
+            led_status.color_to = color_to if color_to else led_status.color_to
+            led_status.transition_time = transition_time if transition_time else led_status.transition_time
             led_status.ticks_since_last_transition = 0  # Reset tick counter
         elif mode == 'fade':
-            led_status.color_from = kwargs.get('color_from', led_status.color_to)
-            led_status.color_to = kwargs.get('color_to', led_status.color_to)
-            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
+            led_status.color_from = color_from if color_from else led_status.color_to
+            led_status.color_to = color_to if color_to else led_status.color_to
+            led_status.transition_time = transition_time if transition_time else led_status.transition_time
             led_status.ticks_since_last_transition = 0  # Reset tick counter
         elif mode == 'fade sweep':
-            led_status.color_from = kwargs.get('color_from', led_status.color_to)
-            led_status.color_to = kwargs.get('color_to', led_status.color_to)
-            led_status.transition_time = kwargs.get('transition_time', led_status.transition_time)
+            led_status.color_from = color_from if color_from else led_status.color_to
+            led_status.color_to = color_to if color_to else led_status.color_to
+            led_status.transition_time = transition_time if transition_time else led_status.transition_time
             led_status.ticks_since_last_transition = 0  # Reset tick counter
 
-    def set_button_mode(self, button_number, mode, **kwargs):
+    def set_button_mode(self, button_number, mode, color_to=None, color_from=None, transition_time=None):
         """
         Set the mode and parameters for all LEDs in a button by button number.
 
         :param button_number: The index of the button to update.
-        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
-        :param kwargs: Additional parameters based on the mode.
+        :param mode: The mode to set ('normal', 'blink', 'fade', 'fade sweep').
+        :param color_to: The target color or blink color.
+        :param color_from: The starting color for fade or off color for blinking.
+        :param transition_time: The transition time for fade or blink interval.
         """
         # Update all LEDs in the specified button (assuming 4 LEDs per button)
         for i in range(button_number * 4, (button_number + 1) * 4):
-            self.set_led_mode(i, mode, **kwargs)
+            self.set_led_mode(i, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
 
-    def set_button_mode_by_label(self, button_label, mode, **kwargs):
+    def set_button_mode_by_label(self, button_label, mode, color_to=None, color_from=None, transition_time=None):
         """
         Set the mode and parameters for all LEDs in a button by button label.
 
         :param button_label: The label of the button to update (e.g., 'P1:A', 'P2:B').
-        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
-        :param kwargs: Additional parameters based on the mode.
+        :param mode: The mode to set ('normal', 'blink', 'fade', 'fade sweep').
+        :param color_to: The target color or blink color.
+        :param color_from: The starting color for fade or off color for blinking.
+        :param transition_time: The transition time for fade or blink interval.
         """
         # Check if the button label exists in the mapping
         if self.button_map and button_label in self.button_map:
             button_number = self.button_map[button_label]
             # Use the existing method to set button mode by number
-            self.set_button_mode(button_number, mode, **kwargs)
+            self.set_button_mode(button_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
         else:
             print(f"Button label '{button_label}' not found in button map or no map provided.")
 
-    def set_led_mode_by_coord(self, coord, mode, **kwargs):
+    def set_led_mode_by_coord(self, coord, mode, color_to=None, color_from=None, transition_time=None):
         """
         Set the mode and parameters for a specific LED by world coordinate.
 
         :param coord: A tuple representing the (x, y) coordinate of the LED.
-        :param mode: The mode to set ('normal', 'blink', 'sync blink', 'fade', 'fade sweep').
-        :param kwargs: Additional parameters based on the mode.
+        :param mode: The mode to set ('normal', 'blink', 'fade', 'fade sweep').
+        :param color_to: The target color or blink color.
+        :param color_from: The starting color for fade or off color for blinking.
+        :param transition_time: The transition time for fade or blink interval.
         """
         # Check if the coordinate exists in the mapping
         if self.coord_map and coord in self.coord_map:
             led_number = self.coord_map[coord]
             # Use the existing method to set LED mode by LED number
-            self.set_led_mode(led_number, mode, **kwargs)
+            self.set_led_mode(led_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
         else:
             print(f"Coordinate '{coord}' not found in coordinate map or no map provided.")
 
@@ -248,9 +256,9 @@ class PlasmaButtons:
 # Example usage:
 
 # Define a button map
-button_map = {'P1:START': 14, 'P1:A': 13, 'P1:B': 11, 'P1:X': 9, 'P1:Y': 7, 'P1:L1': 12, 'P1:L2': 15, 'P1:R1': 8, 
-              'P1:R2': 18, 'P1:SELECT': 10, 'P1:L3': 16, 'P1:R3': 17, 'P1:HOTKEY': 24, 'P1:X1': 29, 'P1:X2': 26, 
-              'P2:START': 19, 'P2:A': 6, 'P2:B': 4, 'P2:X': 2, 'P2:Y': 0, 'P2:L1': 5, 'P2:L2': 20, 'P2:R1': 1, 
+button_map = {'P1:START': 14, 'P1:A': 13, 'P1:B': 11, 'P1:X': 9, 'P1:Y': 7, 'P1:L1': 12, 'P1:L2': 15, 'P1:R1': 8,
+              'P1:R2': 18, 'P1:SELECT': 10, 'P1:L3': 16, 'P1:R3': 17, 'P1:HOTKEY': 24, 'P1:X1': 29, 'P1:X2': 26,
+              'P2:START': 19, 'P2:A': 6, 'P2:B': 4, 'P2:X': 2, 'P2:Y': 0, 'P2:L1': 5, 'P2:L2': 20, 'P2:R1': 1,
               'P2:R2': 23, 'P2:SELECT': 3, 'P2:L3': 21, 'P2:R3': 22, 'P2:HOTKEY': 25, 'P2:X1': 28, 'P2:X2': 27}
 
 # Define a coordinate map
@@ -269,6 +277,7 @@ serial_port = "/dev/plasmabuttons"
 # Initialize the PlasmaButtons object with the button map and coordinate map
 plasma_buttons = PlasmaButtons(num_leds, serial_port, refresh_rate, button_map, coord_map)
 
+# Set LED modes using button labels
 plasma_buttons.set_button_mode(0, 'blink', color_to=RGBl(0, 63, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
 plasma_buttons.set_button_mode(1, 'blink', color_to=RGBl(0, 0, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
 plasma_buttons.set_button_mode(2, 'blink', color_to=RGBl(63, 0, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
