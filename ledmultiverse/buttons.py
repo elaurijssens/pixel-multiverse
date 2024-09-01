@@ -1,10 +1,7 @@
 import time
 import serial
 import threading
-from collections import namedtuple
-
-# Define a NamedTuple for RGBl (Red, Green, Blue, Brightness)
-RGBl = namedtuple('RGBl', ['red', 'green', 'blue', 'brightness'])
+from .colors import RGBl
 
 class LEDStatus:
     def __init__(self):
@@ -111,8 +108,6 @@ class PlasmaButtons:
             button_number = self.button_map[button_label]
             # Use the existing method to set button mode by number
             self.set_button_mode(button_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
-        else:
-            print(f"Button label '{button_label}' not found in button map or no map provided.")
 
     def set_led_mode_by_coord(self, coord, mode, color_to=None, color_from=None, transition_time=None):
         """
@@ -129,8 +124,6 @@ class PlasmaButtons:
             led_number = self.coord_map[coord]
             # Use the existing method to set LED mode by LED number
             self.set_led_mode(led_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
-        else:
-            print(f"Coordinate '{coord}' not found in coordinate map or no map provided.")
 
     def _calculate_color(self, led_number):
         """
@@ -253,82 +246,3 @@ class PlasmaButtons:
             return str(list(self.button_leds))
 
 
-# Example usage:
-
-# Define a button map
-button_map = {'P1:START': 14, 'P1:A': 13, 'P1:B': 11, 'P1:X': 9, 'P1:Y': 7, 'P1:L1': 12, 'P1:L2': 15, 'P1:R1': 8,
-              'P1:R2': 18, 'P1:SELECT': 10, 'P1:L3': 16, 'P1:R3': 17, 'P1:HOTKEY': 24, 'P1:X1': 29, 'P1:X2': 26,
-              'P2:START': 19, 'P2:A': 6, 'P2:B': 4, 'P2:X': 2, 'P2:Y': 0, 'P2:L1': 5, 'P2:L2': 20, 'P2:R1': 1,
-              'P2:R2': 23, 'P2:SELECT': 3, 'P2:L3': 21, 'P2:R3': 22, 'P2:HOTKEY': 25, 'P2:X1': 28, 'P2:X2': 27}
-
-# Define a coordinate map
-coord_map = {
-    (0, 0): 0,  # LED at (0, 0) corresponds to LED index 0
-    (1, 0): 1,  # LED at (1, 0) corresponds to LED index 1
-    (0, 1): 2,  # LED at (0, 1) corresponds to LED index 2
-    (1, 1): 3,  # LED at (1, 1) corresponds to LED index 3
-    # ... other coordinate mappings
-}
-
-num_leds = 128
-refresh_rate = 60
-serial_port = "/dev/plasmabuttons"
-
-# Initialize the PlasmaButtons object with the button map and coordinate map
-plasma_buttons = PlasmaButtons(num_leds, serial_port, refresh_rate, button_map, coord_map)
-
-# Set LED modes using button labels
-plasma_buttons.set_button_mode(0, 'blink', color_to=RGBl(0, 63, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(1, 'blink', color_to=RGBl(0, 0, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(2, 'blink', color_to=RGBl(63, 0, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(3, 'blink', color_to=RGBl(63, 63, 0, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(4, 'blink', color_to=RGBl(0, 63, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(5, 'blink', color_to=RGBl(63, 0, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(6, 'blink', color_to=RGBl(63, 63, 63, 15), color_from=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(7, 'blink', color_from=RGBl(0, 63, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(8, 'blink', color_from=RGBl(0, 0, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(9, 'blink', color_from=RGBl(63, 0, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(10, 'blink', color_from=RGBl(63, 63, 0, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(11, 'blink', color_from=RGBl(0, 63, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(12, 'blink', color_from=RGBl(63, 0, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-plasma_buttons.set_button_mode(13, 'blink', color_from=RGBl(63, 63, 63, 15), color_to=RGBl(0, 0, 0, 0), transition_time=0.25)
-
-time.sleep(3)
-
-plasma_buttons.set_button_mode(0, 'normal', color_to=RGBl(0, 63, 0, 15))
-plasma_buttons.set_button_mode(1, 'normal', color_to=RGBl(0, 0, 63, 15))
-plasma_buttons.set_button_mode(2, 'normal', color_to=RGBl(63, 0, 0, 15))
-plasma_buttons.set_button_mode(3, 'normal', color_to=RGBl(63, 63, 0, 15))
-plasma_buttons.set_button_mode(4, 'normal', color_to=RGBl(0, 63, 63, 15))
-plasma_buttons.set_button_mode(5, 'normal', color_to=RGBl(63, 0, 63, 15))
-plasma_buttons.set_button_mode(6, 'normal', color_to=RGBl(63, 63, 63, 15))
-plasma_buttons.set_button_mode(7, 'normal', color_to=RGBl(0, 63, 0, 15))
-plasma_buttons.set_button_mode(8, 'normal', color_to=RGBl(0, 0, 63, 15))
-plasma_buttons.set_button_mode(9, 'normal', color_to=RGBl(63, 0, 0, 15))
-plasma_buttons.set_button_mode(10, 'normal', color_to=RGBl(63, 63, 0, 15))
-plasma_buttons.set_button_mode(11, 'normal', color_to=RGBl(0, 63, 63, 15))
-plasma_buttons.set_button_mode(12, 'normal', color_to=RGBl(63, 0, 63, 15))
-plasma_buttons.set_button_mode(13, 'normal', color_to=RGBl(63, 63, 63, 15))
-
-time.sleep(3)
-
-plasma_buttons.set_button_mode(0, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(1, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(2, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(3, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(4, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(5, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(6, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(7, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(8, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(9, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(10, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(11, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(12, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(10, 10, 10, 5), transition_time=2)
-
-# Allow the program to run for a while before stopping (example)
-time.sleep(300)
-
-# Stop the refresh loop when done
-plasma_buttons.stop()
