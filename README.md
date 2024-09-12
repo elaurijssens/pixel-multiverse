@@ -29,7 +29,7 @@ The `PlasmaButtons` class provides an interface to control a set of LEDs via a s
 
 ```python
 import time
-from src.Pixel-Multiverse import PlasmaButtons, RGBl
+from pixelpusher import PlasmaButtons, RGBl
 
 # Initialize PlasmaButtons for 16 LEDs with a specific serial port path
 plasma_buttons = PlasmaButtons(num_leds=16, serial_port_path="/dev/ttyUSB0", refresh_rate=60)
