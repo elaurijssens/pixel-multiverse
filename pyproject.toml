@@ -1,0 +1,18 @@
+[project]
+name = "pixelpusher_elaurijssens"
+version = "0.0.1"
+authors = [
+  { name="Emma Laurijssens van Engelenhoven", email="emme@emma.ee" },
+]
+description = "Pixel pusher for Pimoroni Multiverse LED products"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/elaurijssens/pixelpusher"
+Issues = "https://github.com/elaurijssens/pixelpusher/issues"

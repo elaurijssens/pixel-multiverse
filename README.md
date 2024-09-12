@@ -29,7 +29,7 @@ The `PlasmaButtons` class provides an interface to control a set of LEDs via a s
 
 ```python
 import time
-from pixelpusher import PlasmaButtons, RGBl
+from src.pixelpusher import PlasmaButtons, RGBl
 
 # Initialize PlasmaButtons for 16 LEDs with a specific serial port path
 plasma_buttons = PlasmaButtons(num_leds=16, serial_port_path="/dev/ttyUSB0", refresh_rate=60)
@@ -93,7 +93,7 @@ The `LedMatrix` class is designed to control an LED matrix display. It supports 
 #### Example:
 
 ```python
-from pixelpusher import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
+from src.pixelpusher import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
 
 # Initialize a Galactic Unicorn display with RGB color order
 matrix = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, color_order=COLOR_ORDER_RGB)
