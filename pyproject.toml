@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "pixel-multiverse"
 version = "0.0.2"
 authors = [
-  { name="Emma Laurijssens van Engelenhoven", email="emme@emma.ee" },
+  { name="Emma Laurijssens van Engelenhoven", email="emma@emma.ee" },
 ]
 description = "Pixel pusher for Pimoroni Multiverse LED products"
 readme = "README.md"
