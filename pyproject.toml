@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=70.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "pixelpusher_elaurijssens"
-version = "0.0.1"
+name = "pixel-multiverse"
+version = "0.0.2"
 authors = [
   { name="Emma Laurijssens van Engelenhoven", email="emme@emma.ee" },
 ]
@@ -18,5 +22,5 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/elaurijssens/pixelpusher"
-Issues = "https://github.com/elaurijssens/pixelpusher/issues"
+Homepage = "https://github.com/elaurijssens/pixel-multiverse"
+Issues = "https://github.com/elaurijssens/pixel-multiverse/issues"

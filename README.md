@@ -1,6 +1,6 @@
-# PixelPusher
+# Pixel-Multiverse
 
-**PixelPusher** is a Python library designed to simplify controlling LED buttons and LED matrices for Pimoroni Picade 
+**Pixel-Multiverse** is a Python library designed to simplify controlling LED buttons and LED matrices for Pimoroni Picade 
 projects. The library includes abstractions for both button LED control and matrix LED displays, providing an 
 easy-to-use interface for managing complex lighting effects and patterns.
 
@@ -13,10 +13,10 @@ setting pixel colors, and handling brightness and opacity.
 
 ## Installation
 
-To install the PixelPusher library, you can add it to your project by cloning the repository:
+To install the Pixel-Multiverse library, you can add it to your project by cloning the repository:
 
 ```bash
-git clone https://github.com/elaurijssens/pixelpusher.git
+pip install pixel-multiverse
 ```
 
 ## Usage
@@ -29,7 +29,7 @@ The `PlasmaButtons` class provides an interface to control a set of LEDs via a s
 
 ```python
 import time
-from src.pixelpusher import PlasmaButtons, RGBl
+from src.Pixel-Multiverse import PlasmaButtons, RGBl
 
 # Initialize PlasmaButtons for 16 LEDs with a specific serial port path
 plasma_buttons = PlasmaButtons(num_leds=16, serial_port_path="/dev/ttyUSB0", refresh_rate=60)
@@ -93,7 +93,7 @@ The `LedMatrix` class is designed to control an LED matrix display. It supports 
 #### Example:
 
 ```python
-from src.pixelpusher import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
+from src.Pixel-Multiverse import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
 
 # Initialize a Galactic Unicorn display with RGB color order
 matrix = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, color_order=COLOR_ORDER_RGB)
