@@ -93,7 +93,7 @@ The `LedMatrix` class is designed to control an LED matrix display. It supports 
 #### Example:
 
 ```python
-from src.Pixel-Multiverse import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
+from pixelpusher import LedMatrix, COLOR_ORDER_RGB, DISPLAY_GALACTIC_UNICORN
 
 # Initialize a Galactic Unicorn display with RGB color order
 matrix = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, color_order=COLOR_ORDER_RGB)
