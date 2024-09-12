@@ -12,6 +12,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "pyserial",
+    "pillow"
+]
 
 [project.urls]
 Homepage = "https://github.com/elaurijssens/pixelpusher"
