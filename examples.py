@@ -1,5 +1,12 @@
-from ledmultiverse import PlasmaButtons, RGBl
+from ledmultiverse import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
 import time
+
+unicorn = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_BGR)
+
+# Display the PNG with rescaling and a background color (for transparency)
+unicorn.display_image("./images/arcade2.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+
+
 
 # Define a button map
 button_map = {'P1:START': 14, 'P1:A': 13, 'P1:B': 11, 'P1:X': 9, 'P1:Y': 7, 'P1:L1': 12, 'P1:L2': 15, 'P1:R1': 8,
@@ -84,6 +91,9 @@ plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(10, 10, 10, 5), transit
 # Allow the program to run for a while before stopping (example)
 time.sleep(5)
 
+# Display the PNG without rescaling and no background color (uses existing frame buffer)
+unicorn.display_image("./images/pacman.png", rescale=True)
+
 x_values = sorted(set(coord[0] for coord in coord_map.keys()))
 y_values = sorted(set(coord[1] for coord in coord_map.keys()))
 
@@ -135,6 +145,8 @@ for _ in range(1, 10):
         time.sleep(0.01)
     time.sleep(0.2)
 
+unicorn.display_image("./images/1942b.gif", rescale=True)
+
 plasma_buttons.set_button_mode_by_label(button_label="P1:A", mode="fade sweep", color_from=RGBl(0,63,63,15),
                                         color_to=RGBl(0,0,63,15), transition_time=0.5)
 plasma_buttons.set_button_mode_by_label(button_label="P1:B", mode="normal", color_to=RGBl(15,15,63,15))
@@ -172,6 +184,7 @@ plasma_buttons.set_button_mode(11, 'fade', color_to=RGBl(0, 0, 0, 0), transition
 plasma_buttons.set_button_mode(12, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
 plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
 
-time.sleep(5)
+time.sleep(60)
 
 plasma_buttons.stop()
+unicorn.stop_display()
