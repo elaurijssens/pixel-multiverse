@@ -6,11 +6,11 @@ import serial
 
 # Display types and sizes
 DISPLAY_GALACTIC_UNICORN = 0
-DISPLAY_HUB75_128x32 = 1
+DISPLAY_INTERSTATE75_128x32 = 1
 
 DISPLAY_SIZES = {
     DISPLAY_GALACTIC_UNICORN: (53, 11),
-    DISPLAY_HUB75_128x32: (128, 32)
+    DISPLAY_INTERSTATE75_128x32: (128, 32)
 }
 
 # Color order permutations
@@ -51,7 +51,7 @@ class LedMatrix:
         :param color_order: A tuple defining the color order (e.g., COLOR_ORDER_RGB).
         """
         (self.width, self.height) = DISPLAY_SIZES[display]
-        self.display_buffer = bytearray([31] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
+        self.display_buffer = bytearray([0] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
         self.serial_port_path = serial_port_path
         self.color_order = color_order  # Set the desired color order
         self._stop_event = threading.Event()

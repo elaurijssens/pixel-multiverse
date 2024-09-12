@@ -1,35 +1,40 @@
-# tool to calculate leds based on button coordinates
+# tool to calculate leds based on button coordinates based on the Picade MAX.
+# All you need to do is check how you wired your plasma buttons and change the button number in the
+# dictionaries below. The coordinates are based on the actual button position and the button function is put in the
+# comment behind the coordinates.
+# See example_layout.png for an example numbering. Button 0 is the button connected to the plasma connector on the
+# input board, button 1 the one connected to button 1, and so on.
 
 button_positions_30_2 = {
-    0: (66, 15),
-    1: (65, 8),
-    2: (60, 17),
-    3: (59, 10),
-    4: (54, 19),
-    5: (53, 12),
-    6: (53, 26)
+    0: (66, 15), # P2 Y
+    1: (65, 8),  # P2 R1
+    2: (60, 17), # P2 X
+    3: (59, 10), # P2 Select
+    4: (54, 19), # P2 B
+    5: (53, 12), # P2 L1
+    6: (53, 26)  # P2 A
 }
 button_positions_30_1 = {
-    7: (29, 19),
-    8: (31, 13),
-    9: (23, 19),
-    10: (25, 13),
-    11: (17, 19),
-    12: (19, 13),
-    13: (14, 25)
+    7: (29, 19),  # P1 Y
+    8: (31, 13),  # P1 R1
+    9: (23, 19),  # P1 X
+    10: (25, 13), # P1 Select
+    11: (17, 19), # P1 B
+    12: (19, 13), # P1 L1
+    13: (14, 25)  # P1 A
 }
 
 button_positions_24 = {
-    14: (2, 3),
-    15: (11, 3),
-    16: (17, 3),
-    17: (23, 3),
-    18: (29, 3),
-    19: (41, 3),
-    20: (50, 3),
-    21: (56, 3),
-    22: (62, 3),
-    23: (68, 3)
+    14: (2, 3),  # P1 Start
+    15: (11, 3), # P1 L2
+    16: (17, 3), # P1 L3
+    17: (23, 3), # P1 R3
+    18: (29, 3), # P1 R2
+    19: (41, 3), # P2 Start
+    20: (50, 3), # P2 L2
+    21: (56, 3), # P2 L3
+    22: (62, 3), # P2 R3
+    23: (68, 3)  # P2 L2
 }
 
 # Create the mapping
