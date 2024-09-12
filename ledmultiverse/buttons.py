@@ -3,6 +3,7 @@ import serial
 import threading
 from .colors import RGBl
 
+
 class LEDStatus:
     def __init__(self):
         # Initialize LED status to default values
@@ -12,12 +13,14 @@ class LEDStatus:
         self.color_to = RGBl(0, 0, 0, 0)  # Normal color, target color for fade modes, blink color for blink modes
         self.ticks_since_last_transition = 0  # Ticks since the last transition for timing calculations
 
+
 class PlasmaButtons:
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
     COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
     BRIGHTNESS_MASK = 0b00001111  # Mask to limit brightness values to a maximum of 15
 
-    def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons", refresh_rate=60, button_map=None, coord_map=None):
+    def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons",
+                 refresh_rate=60, button_map=None, coord_map=None):
         """
         Initialize the PlasmaButtons class.
 
@@ -107,7 +110,8 @@ class PlasmaButtons:
         if self.button_map and button_label in self.button_map:
             button_number = self.button_map[button_label]
             # Use the existing method to set button mode by number
-            self.set_button_mode(button_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
+            self.set_button_mode(button_number, mode,
+                                 color_to=color_to, color_from=color_from, transition_time=transition_time)
 
     def set_led_mode_by_coord(self, coord, mode, color_to=None, color_from=None, transition_time=None):
         """
@@ -123,7 +127,8 @@ class PlasmaButtons:
         if self.coord_map and coord in self.coord_map:
             led_number = self.coord_map[coord]
             # Use the existing method to set LED mode by LED number
-            self.set_led_mode(led_number, mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
+            self.set_led_mode(led_number, mode,
+                              color_to=color_to, color_from=color_from, transition_time=transition_time)
 
     def _calculate_color(self, led_number):
         """
@@ -244,5 +249,3 @@ class PlasmaButtons:
         """
         with self._lock:  # Ensure thread safety when accessing the button_leds array
             return str(list(self.button_leds))
-
-

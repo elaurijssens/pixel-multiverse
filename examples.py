@@ -4,7 +4,7 @@ import time
 unicorn = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_BGR)
 
 # Display the PNG with rescaling and a background color (for transparency)
-unicorn.display_image("./images/arcade2.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+unicorn.display_image("./images/pacman.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
 
 
 
@@ -92,7 +92,7 @@ plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(10, 10, 10, 5), transit
 time.sleep(5)
 
 # Display the PNG without rescaling and no background color (uses existing frame buffer)
-unicorn.display_image("./images/pacman.png", rescale=True)
+unicorn.display_image("./images/arcade.png", rescale=True)
 
 x_values = sorted(set(coord[0] for coord in coord_map.keys()))
 y_values = sorted(set(coord[1] for coord in coord_map.keys()))
