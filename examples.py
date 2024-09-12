@@ -1,4 +1,4 @@
-from ledmultiverse import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
+from pixelpusher import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
 import time
 
 unicorn = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_BGR)
