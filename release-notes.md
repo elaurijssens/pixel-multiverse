@@ -1,10 +1,10 @@
 # Release Notes
 
-## Version 0.1.0 (Sep 15, 2024)
+## Version 0.1.1 (Sep 15, 2024)
 - **Documentation:**
   - Add release notes
 - **Maintenance:**
-  - Bumped version to 0.1.0.
+  - Bumped version to 0.1.1.
 
 ## Version 0.0.5 (Sep 15, 2024)
 - **Fixes and Enhancements:**

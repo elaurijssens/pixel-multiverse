@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pixel-multiverse"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Emma Laurijssens van Engelenhoven", email="emma@emma.ee" },
 ]
@@ -24,4 +24,4 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/elaurijssens/pixel-multiverse"
 Issues = "https://github.com/elaurijssens/pixel-multiverse/issues"
-"Release Notes" = "https://example.com/release-notes"
+"Release Notes" = "https://github.com/elaurijssens/pixel-multiverse/blob/main/release-notes.md"
