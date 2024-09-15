@@ -1,8 +1,9 @@
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageDraw, ImageFont
 from .colors import RGBl
 import threading
 import time
 import serial
+import os
 
 # Display types and sizes
 DISPLAY_GALACTIC_UNICORN = 0
@@ -52,7 +53,7 @@ class LedMatrix:
         """
         (self.width, self.height) = DISPLAY_SIZES[display]
         self.display_buffer = bytearray([0] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
-        self.background_buffer = None  # To store background pixel data
+        self.background_buffer = bytearray([20] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
         self.serial_port_path = serial_port_path
         self.color_order = color_order  # Set the desired color order
         self._stop_event = threading.Event()
@@ -147,7 +148,7 @@ class LedMatrix:
             for y in range(self.height):
                 self._set_pixel(x, y, background_color)
 
-    def display_image(self, image_path=None, rescale=False, background_color=None, brightness=127):
+    def display_image(self, image_path, rescale=False, background_color=None, brightness=127):
         """
         Displays a static image (PNG or single-frame GIF) or an animated GIF on the matrix.
 
@@ -161,6 +162,13 @@ class LedMatrix:
         """
         self.stop()  # Stop any ongoing GIF animation
         self._stop_event.clear()  # Ensure the stop flag is cleared
+
+        # Check if the image file exists
+        if not image_path or not os.path.exists(image_path):
+            # Display an error message if no file or file doesn't exist
+            error_message = "Not found"
+            self.display_text(error_message, brightness)
+            return
 
         img = Image.open(image_path)
 
@@ -231,3 +239,32 @@ class LedMatrix:
                 self._set_pixel(x, y, RGBl(int(blended_r), int(blended_g), int(blended_b), brightness))
 
         self.write_to_display()
+
+    def display_text(self, message, brightness):
+        """
+        Displays the given text message on the LED matrix.
+
+        :param message: The text message to display.
+        :param brightness: Brightness of the displayed text.
+        """
+        # Create an image for the text
+        img = Image.new('RGBA', (self.width, self.height), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+
+        # Use a simple font
+        font = ImageFont.load_default()  # You can use ImageFont.truetype() for custom fonts
+
+        # Get the bounding box of the text
+        text_bbox = draw.textbbox((0, 0), message, font=font )
+        text_width = text_bbox[2] - text_bbox[0]
+        text_height = text_bbox[3] - text_bbox[1]
+
+        # Calculate the position to center the text
+        x_pos = (self.width - text_width) // 2
+        y_pos = (self.height - text_height) // 2
+
+        # Draw the text onto the image
+        draw.text((x_pos, y_pos), message, font=font, fill=(255, 255, 255, 255))  # White text
+
+        # Display the text as an image
+        self._display_frame(img, rescale=True, brightness=brightness)
