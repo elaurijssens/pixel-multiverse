@@ -52,18 +52,22 @@ class LedMatrix:
         """
         (self.width, self.height) = DISPLAY_SIZES[display]
         self.display_buffer = bytearray([0] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
+        self.background_buffer = None  # To store background pixel data
         self.serial_port_path = serial_port_path
         self.color_order = color_order  # Set the desired color order
         self._stop_event = threading.Event()
         self._thread = None
 
-    def stop_display(self):
+    def stop(self):
         """
         Stops any ongoing display, such as an animated GIF.
         """
         if self._thread is not None:
             self._stop_event.set()
-            self._thread.join()
+            # Only join if it's a different thread from the current one
+            if self._thread != threading.current_thread():
+                self._thread.join()
+            self._thread = None  # Reset the thread variable
 
     def write_to_display(self):
         """
@@ -138,12 +142,12 @@ class LedMatrix:
 
         :param background_color: The RGBl color to fill the background with.
         """
-        self.stop_display()  # Stop any ongoing GIF animation
+
         for x in range(self.width):
             for y in range(self.height):
                 self._set_pixel(x, y, background_color)
 
-    def display_image(self, image_path, rescale=False, background_color=None, brightness=127):
+    def display_image(self, image_path=None, rescale=False, background_color=None, brightness=127):
         """
         Displays a static image (PNG or single-frame GIF) or an animated GIF on the matrix.
 
@@ -155,46 +159,43 @@ class LedMatrix:
         :param background_color: The color used for filling transparent areas, if provided.
         :param brightness: Brightness of the image (applies to the image as a whole). Defaults to 127.
         """
-        self.stop_display()  # Stop any ongoing GIF animation
+        self.stop()  # Stop any ongoing GIF animation
         self._stop_event.clear()  # Ensure the stop flag is cleared
 
         img = Image.open(image_path)
 
-        # Check if the image is animated (i.e., has more than 1 frame)
+        # Clear with the background and save the buffer before starting the animation or static image
+        if background_color:
+            self.clear_with_background(background_color)
+
+        # Always copy the current display buffer to the background buffer
+        self.background_buffer = self.display_buffer[:]
+
         frames = [frame.copy() for frame in ImageSequence.Iterator(img)]
         if len(frames) == 1:
-            # If it's a single-frame image, just display it as a static image
-            self._display_frame(frames[0], rescale, background_color, brightness)
+            self._display_frame(frames[0], rescale, brightness)
         else:
-            # If it's an animated GIF, start a thread to display each frame
             def animate_gif():
-                while True:
+                while not self._stop_event.is_set():
                     for frame in frames:
-                        if self._stop_event.is_set():
-                            return  # Stop the thread if requested
-
-                        self._display_frame(frame.convert("RGBA"), rescale, background_color, brightness)
+                        self._display_frame(frame.convert("RGBA"), rescale, brightness)
                         time.sleep(img.info.get('duration', 100) / 1000.0)  # Default to 100ms if no duration
 
             self._thread = threading.Thread(target=animate_gif)
             self._thread.start()
 
-    def _display_frame(self, img, rescale, background_color, brightness):
+    def _display_frame(self, img, rescale, brightness):
         """
         Displays a single frame of a GIF or a PNG image.
 
         This method resizes or crops the image to fit the display, and updates the
         display buffer with the image's pixel data. Blends the incoming pixel with
-        the current pixel based on opacity.
+        the current background based on opacity.
 
         :param img: The image frame to display.
         :param rescale: If True, the image will be rescaled to fit the display.
-        :param background_color: The background color to fill in transparent areas.
         :param brightness: Brightness of the image being displayed.
         """
-        if background_color:
-            self.clear_with_background(background_color)
-
         if rescale:
             img = img.resize((self.width, self.height))
         else:
@@ -205,7 +206,6 @@ class LedMatrix:
             lower = upper + self.height
             img = img.crop((left, upper, right, lower))
 
-        # Iterate through image pixels and update the buffer
         for x in range(img.width):
             for y in range(img.height):
                 pixel = img.getpixel((x, y))
@@ -215,19 +215,19 @@ class LedMatrix:
                     r, g, b = pixel  # RGB
                     a = 255  # Assume fully opaque if no alpha channel
 
-                # Get the current pixel for blending
-                current_pixel = self._get_pixel(x, y)
+                # Get the current pixel from the background buffer
+                index = (x + y * self.width) * 4
+                current_r, current_g, current_b, _ = self.background_buffer[index:index + 4]
 
-                # Blend the new pixel with the current pixel based on opacity
-                blended_r = (r * (a / 255)) + (current_pixel.red * (1 - a / 255))
-                blended_g = (g * (a / 255)) + (current_pixel.green * (1 - a / 255))
-                blended_b = (b * (a / 255)) + (current_pixel.blue * (1 - a / 255))
+                # Calculate blend factor based on opacity (alpha channel)
+                blend_factor = a / 255
 
-                # Apply brightness scaling
-                blended_r = min(int(blended_r * (brightness / 255)), 255)
-                blended_g = min(int(blended_g * (brightness / 255)), 255)
-                blended_b = min(int(blended_b * (brightness / 255)), 255)
+                # Perform blending calculation
+                blended_r = (r * blend_factor) + (current_r * (1 - blend_factor))
+                blended_g = (g * blend_factor) + (current_g * (1 - blend_factor))
+                blended_b = (b * blend_factor) + (current_b * (1 - blend_factor))
 
-                self._set_pixel(x, y, RGBl(blended_r, blended_g, blended_b, 255))
+                # Set the pixel on the display, passing the brightness separately
+                self._set_pixel(x, y, RGBl(int(blended_r), int(blended_g), int(blended_b), brightness))
 
         self.write_to_display()
