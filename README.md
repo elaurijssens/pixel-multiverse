@@ -102,7 +102,7 @@ matrix = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, color_order=COLOR_ORDER_RGB
 matrix.display_image("path/to/image.png", rescale=True, brightness=150)
 
 # Stop the display when done
-matrix.stop_display()
+matrix.stop()
 ```
 
 ### **Methods:**
@@ -110,11 +110,11 @@ matrix.stop_display()
 - `__init__(self, display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_RGB)`:
   Initializes the `LedMatrix` object with a specified display size, serial port for communication, and color order.
   
-  - `display`: Type of display (e.g., `DISPLAY_GALACTIC_UNICORN`, `DISPLAY_HUB75_128x32`).
+  - `display`: Type of display (e.g., `DISPLAY_GALACTIC_UNICORN`, `DISPLAY_INTERSTATE75_128x32`).
   - `serial_port_path`: Path to the serial port.
   - `color_order`: Tuple defining the order of color channels (e.g., RGB, BGR).
 
-- `stop_display(self)`:
+- `stop(self)`:
   Stops any ongoing display, such as an animated GIF, and halts updates to the LED matrix.
 
 - `write_to_display(self)`:
@@ -140,9 +140,18 @@ matrix.stop_display()
   - `background_color`: The background color to use for transparent areas (optional).
   - `brightness`: Brightness of the display (default is 127).
 
-- `_display_frame(self, img, rescale, background_color, brightness)`:
+- `_display_frame(self, img, rescale, brightness)`:
   Displays a single frame from an image or GIF on the matrix, with support for rescaling and blending pixels based on opacity and brightness.
+
+- `display_text(self, message, brightness)`:
+  Displays a text message on the LED matrix.
+  
+  - `message`: The text message to display.
+  - `brightness`: Brightness of the displayed text.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+```
+
+I’ve updated the method descriptions based on the new docstrings from your `LedMatrix` class and ensured all the new functionality is covered. Let me know if further changes are needed!
