@@ -1,10 +1,12 @@
-from pixelpusher import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
+from src.pixelpusher import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
 import time
 
 unicorn = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_BGR)
+unicorn.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+time.sleep(5)
 
 # Display the PNG with rescaling and a background color (for transparency)
-unicorn.display_image("./images/pacman.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+unicorn.display_image("./images/animated.gif", rescale=True)
 
 
 
@@ -92,7 +94,7 @@ plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(10, 10, 10, 5), transit
 time.sleep(5)
 
 # Display the PNG without rescaling and no background color (uses existing frame buffer)
-unicorn.display_image("./images/arcade.png", rescale=True)
+
 
 x_values = sorted(set(coord[0] for coord in coord_map.keys()))
 y_values = sorted(set(coord[1] for coord in coord_map.keys()))
@@ -101,7 +103,7 @@ y_values = sorted(set(coord[1] for coord in coord_map.keys()))
 min_x, max_x = min(x_values), max(x_values)+1
 min_y, max_y = min(y_values), max(y_values)+1
 
-for _ in range(1, 5):
+for _ in range(1, 2):
     for column in range (min_x, max_x):
         for row in range (min_y, max_y):
             plasma_buttons.set_led_mode_by_coord(coord=(column, row),mode="normal", color_to=RGBl(31, 31, 31, 5))
@@ -112,7 +114,7 @@ for _ in range(1, 5):
         time.sleep(0.01)
     time.sleep(0.2)
 
-for _ in range(1, 10):
+for _ in range(1, 3):
     for row in range (min_y, max_y):
         for column in range (min_x, max_x):
             plasma_buttons.set_led_mode_by_coord(coord=(column, row),mode="normal", color_to=RGBl(31, 31, 31, 5))
@@ -123,7 +125,7 @@ for _ in range(1, 10):
         time.sleep(0.01)
     time.sleep(0.2)
 
-for _ in range(1, 5):
+for _ in range(1, 2):
     for column in range (max_x, min_x, -1):
         for row in range (min_y, max_y):
             plasma_buttons.set_led_mode_by_coord(coord=(column, row),mode="normal", color_to=RGBl(31, 31, 31, 5))
@@ -134,7 +136,7 @@ for _ in range(1, 5):
         time.sleep(0.01)
     time.sleep(0.2)
 
-for _ in range(1, 10):
+for _ in range(1, 3):
     for row in range (max_y, min_y, -1):
         for column in range (min_x, max_x):
             plasma_buttons.set_led_mode_by_coord(coord=(column, row),mode="normal", color_to=RGBl(31, 31, 31, 5))
@@ -145,7 +147,7 @@ for _ in range(1, 10):
         time.sleep(0.01)
     time.sleep(0.2)
 
-unicorn.display_image("./images/1942b.gif", rescale=True)
+unicorn.display_image("./images/animated.gif", rescale=True , background_color=RGBl(75, 100, 75, 255))
 
 plasma_buttons.set_button_mode_by_label(button_label="P1:A", mode="fade sweep", color_from=RGBl(0,63,63,15),
                                         color_to=RGBl(0,0,63,15), transition_time=0.5)
@@ -167,7 +169,7 @@ plasma_buttons.set_button_mode_by_label(button_label="P2:R1", mode="normal", col
 plasma_buttons.set_button_mode_by_label(button_label="P2:SELECT", mode="blink", color_from=RGBl(63,31,31,15),
                                         color_to=RGBl(63,5,5,15),transition_time=0.5)
 
-time.sleep(10)
+time.sleep(5)
 
 plasma_buttons.set_button_mode(0, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
 plasma_buttons.set_button_mode(1, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
@@ -184,7 +186,10 @@ plasma_buttons.set_button_mode(11, 'fade', color_to=RGBl(0, 0, 0, 0), transition
 plasma_buttons.set_button_mode(12, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
 plasma_buttons.set_button_mode(13, 'fade', color_to=RGBl(0, 0, 0, 0), transition_time=2)
 
-time.sleep(60)
+time.sleep(3)
 
 plasma_buttons.stop()
-unicorn.stop_display()
+unicorn.stop()
+
+unicorn.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+
