@@ -1,13 +1,17 @@
-from src.pixelpusher import PlasmaButtons, RGBl, LedMatrix, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_BGR
+from src.pixelpusher import *
 import time
 
 unicorn = LedMatrix(display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_BGR)
+i75 = LedMatrix(display=DISPLAY_INTERSTATE75_128x32, serial_port_path="/dev/i75",
+                color_order=COLOR_ORDER_GBR, compress=True)
+
 unicorn.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
+i75.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 0))
 time.sleep(5)
 
 # Display the PNG with rescaling and a background color (for transparency)
 unicorn.display_image("./images/animated.gif", rescale=True)
-
+i75.display_image("./images/animated.gif", rescale=True)
 
 
 # Define a button map
@@ -148,6 +152,7 @@ for _ in range(1, 3):
     time.sleep(0.2)
 
 unicorn.display_image("./images/animated.gif", rescale=True , background_color=RGBl(75, 100, 75, 255))
+i75.display_image("./images/animated.gif", rescale=True , background_color=RGBl(0, 0, 0, 0))
 
 plasma_buttons.set_button_mode_by_label(button_label="P1:A", mode="fade sweep", color_from=RGBl(0,63,63,15),
                                         color_to=RGBl(0,0,63,15), transition_time=0.5)
@@ -190,6 +195,7 @@ time.sleep(3)
 
 plasma_buttons.stop()
 unicorn.stop()
+i75.stop()
 
 unicorn.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 255))
-
+i75.display_image("./images/arcade3.png", rescale=True, background_color=RGBl(0, 0, 0, 255))

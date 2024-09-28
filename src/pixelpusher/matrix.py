@@ -4,6 +4,8 @@ import threading
 import time
 import serial
 import os
+import zlib
+import struct
 
 # Display types and sizes
 DISPLAY_GALACTIC_UNICORN = 0
@@ -42,20 +44,25 @@ class LedMatrix:
     """
 
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
+    COMPRESSED_PREFIX = b"multiverse:_zip"  # Prefix for compressed data
 
-    def __init__(self, display=DISPLAY_GALACTIC_UNICORN, serial_port_path="/dev/unicorn", color_order=COLOR_ORDER_RGB):
+    def __init__(self, display=DISPLAY_GALACTIC_UNICORN,
+                 serial_port_path="/dev/unicorn",
+                 color_order=COLOR_ORDER_RGB, compress=False):
         """
         Initializes the LedMatrix object.
 
         :param display: Type of display (e.g., DISPLAY_GALACTIC_UNICORN, DISPLAY_HUB75_128x32).
         :param serial_port_path: Path to the serial port used for communication.
         :param color_order: A tuple defining the color order (e.g., COLOR_ORDER_RGB).
+        :param compress: Boolean indicating whether to compress the data stream.
         """
         (self.width, self.height) = DISPLAY_SIZES[display]
         self.display_buffer = bytearray([0] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
         self.background_buffer = bytearray([20] * (self.width * self.height * 4))  # 4 bytes per pixel (RGBA)
         self.serial_port_path = serial_port_path
         self.color_order = color_order  # Set the desired color order
+        self.compress = compress  # Enable or disable compression
         self._stop_event = threading.Event()
         self._thread = None
 
@@ -80,7 +87,17 @@ class LedMatrix:
         translated_buffer = self.translate_buffer()
         try:
             with serial.Serial(self.serial_port_path, baudrate=115200, timeout=1) as ser:
-                ser.write(self.PREFIX + translated_buffer)
+                if self.compress:
+                    # Compress the data using zlib
+                    compressed_data = zlib.compress(translated_buffer)
+                    compressed_size = len(compressed_data)
+                    # Send the compressed data with the compressed prefix and size
+                    ser.write(self.COMPRESSED_PREFIX)
+                    ser.write(struct.pack('<I', compressed_size))  # Send size as 4 bytes (little-endian)
+                    ser.write(compressed_data)
+                else:
+                    # Send the uncompressed data with the standard prefix
+                    ser.write(self.PREFIX + translated_buffer)
         except serial.SerialException as e:
             print(f"Error opening serial port {self.serial_port_path}: {e}")
 
@@ -190,7 +207,7 @@ class LedMatrix:
                         self._display_frame(frame.convert("RGBA"), rescale, brightness)
                         elapsed_time = time.time() - start_time  # Calculate the time taken to display the frame
 
-                        frame_duration = img.info.get('duration', 100) / 1000.0  # Frame duration in seconds
+                        frame_duration = frame.info.get('duration', 100) / 1000.0  # Frame duration in seconds
                         sleep_time = frame_duration - elapsed_time  # Adjust sleep time
 
                         if sleep_time > 0:
@@ -265,7 +282,7 @@ class LedMatrix:
         font = ImageFont.load_default()  # You can use ImageFont.truetype() for custom fonts
 
         # Get the bounding box of the text
-        text_bbox = draw.textbbox((0, 0), message, font=font )
+        text_bbox = draw.textbbox((0, 0), message, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
 
