@@ -1,5 +1,9 @@
 # Release Notes
 
+## Version 0.1.2 (Sep 28, 2024)
+- **Fixes and Enhancements:**
+  - Take data transfer times into account when displaying animated GIFs
+  
 ## Version 0.1.1 (Sep 15, 2024)
 - **Documentation:**
   - Add release notes

@@ -149,9 +149,12 @@ matrix.stop()
   - `message`: The text message to display.
   - `brightness`: Brightness of the displayed text.
 
+## examples.py
+
+`/dev/unicorn`? Yes, I have remapped the Galactic Unicorn's USB tty to /dev/unicorn through udev. But please do 
+replace it with your own USB connection, usually /dev/ttyACM0 or /dev/ttyACM1.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-```
 
-I’ve updated the method descriptions based on the new docstrings from your `LedMatrix` class and ensured all the new functionality is covered. Let me know if further changes are needed!
