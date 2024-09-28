@@ -186,8 +186,18 @@ class LedMatrix:
             def animate_gif():
                 while not self._stop_event.is_set():
                     for frame in frames:
+                        start_time = time.time()  # Record the start time
                         self._display_frame(frame.convert("RGBA"), rescale, brightness)
-                        time.sleep(img.info.get('duration', 100) / 1000.0)  # Default to 100ms if no duration
+                        elapsed_time = time.time() - start_time  # Calculate the time taken to display the frame
+
+                        frame_duration = img.info.get('duration', 100) / 1000.0  # Frame duration in seconds
+                        sleep_time = frame_duration - elapsed_time  # Adjust sleep time
+
+                        if sleep_time > 0:
+                            time.sleep(sleep_time)
+                        else:
+                            # If the data transfer takes longer than the frame duration, skip sleeping
+                            pass
 
             self._thread = threading.Thread(target=animate_gif)
             self._thread.start()
