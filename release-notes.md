@@ -1,8 +1,17 @@
 # Release Notes
 
+## Version 0.2.0 (Sep 28, 2024)
+- **Fixes and Enhancements:**
+  - Fix animated GIF frame timing
+  - Add compression capability
+- **Maintenance:**
+  - Bumped version to 0.2.0.
+  
 ## Version 0.1.2 (Sep 28, 2024)
 - **Fixes and Enhancements:**
   - Take data transfer times into account when displaying animated GIFs
+- **Maintenance:**
+  - Bumped version to 0.1.2.
   
 ## Version 0.1.1 (Sep 15, 2024)
 - **Documentation:**

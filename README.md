@@ -113,7 +113,8 @@ matrix.stop()
   - `display`: Type of display (e.g., `DISPLAY_GALACTIC_UNICORN`, `DISPLAY_INTERSTATE75_128x32`).
   - `serial_port_path`: Path to the serial port.
   - `color_order`: Tuple defining the order of color channels (e.g., RGB, BGR).
-
+  - `compress`: True or False. If True, the data is compressed before sending it to the display. Useful for large
+displays. If the display does not support decompression, no image is shown.
 - `stop(self)`:
   Stops any ongoing display, such as an animated GIF, and halts updates to the LED matrix.
 
