@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 0.3.0 (Sep 29, 2024)
+- **Breaking change:**
+  - changed compressed data prefix to zdat
+- **Maintenance:**
+  - Bumped version to 0.2.1.
+
 ## Version 0.2.0 (Sep 28, 2024)
 - **Fixes and Enhancements:**
   - Fix animated GIF frame timing

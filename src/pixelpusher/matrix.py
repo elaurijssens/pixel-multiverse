@@ -44,7 +44,7 @@ class LedMatrix:
     """
 
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
-    COMPRESSED_PREFIX = b"multiverse:_zip"  # Prefix for compressed data
+    COMPRESSED_PREFIX = b"multiverse:zdat"  # Prefix for compressed data
 
     def __init__(self, display=DISPLAY_GALACTIC_UNICORN,
                  serial_port_path="/dev/unicorn",
