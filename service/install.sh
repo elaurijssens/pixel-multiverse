@@ -16,6 +16,28 @@ error_exit() {
     exit 1
 }
 
+# Check for systemd
+if ! pidof systemd &>/dev/null; then
+    error_exit "Systemd is not running. This installer requires a systemd-based Linux distribution."
+fi
+
+# Check for socat and install if missing
+if ! command -v socat &>/dev/null; then
+    echo "socat is not installed. Installing socat..."
+
+    if command -v apt-get &>/dev/null; then
+        sudo apt-get update && sudo apt-get install -y socat || error_exit "Failed to install socat using apt-get."
+    elif command -v yum &>/dev/null; then
+        sudo yum install -y socat || error_exit "Failed to install socat using yum."
+    elif command -v dnf &>/dev/null; then
+        sudo dnf install -y socat || error_exit "Failed to install socat using dnf."
+    else
+        error_exit "No compatible package manager found. Please install socat manually."
+    fi
+else
+    echo "socat is already installed."
+fi
+
 # Check if service already exists
 if systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
     echo "Service $SERVICE_NAME already exists. Checking installation..."
