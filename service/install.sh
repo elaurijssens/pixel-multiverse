@@ -7,6 +7,7 @@ SERVICE_GROUP="pixelpusher"
 INSTALL_DIR="/opt/$SERVICE_NAME"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
+ESSCRIPT_PATH="esscript.sh"
 PYTHON_EXEC="/usr/bin/python3"
 SERVICE_SCRIPT="service.py"
 
@@ -57,13 +58,20 @@ if systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
     # Check if the service script exists
     if [[ ! -f "$INSTALL_DIR/$SERVICE_SCRIPT" ]]; then
         echo "Service script $SERVICE_SCRIPT is missing in $INSTALL_DIR. Recopying..."
-        RECOPY_SCRIPT=true
+        RECOPY_SERVICE_SCRIPT=true
+    fi
+
+    # Check if esscript exists
+    if [[ ! -f "$INSTALL_DIR/$ESSCRIPT_PATH" ]]; then
+        echo "Esscript $ESSCRIPT_PATH is missing in $INSTALL_DIR. Recopying..."
+        RECOPY_ESSCRIPT=true
     fi
 else
     echo "Service $SERVICE_NAME does not exist. Proceeding with fresh installation..."
     RECREATE_SERVICE_FILE=true
     RECREATE_VENV=true
-    RECOPY_SCRIPT=true
+    RECOPY_SERVICE_SCRIPT=true
+    RECOPY_ESSCRIPT=true
 fi
 
 # Create service user and group if they do not exist
@@ -83,13 +91,25 @@ else
 fi
 
 # Copy service script if required
-if [[ "$RECOPY_SCRIPT" == true ]]; then
+if [[ "$RECOPY_SERVICE_SCRIPT" == true ]]; then
     if [[ -f "$SERVICE_SCRIPT" ]]; then
         sudo cp $SERVICE_SCRIPT $INSTALL_DIR/ || error_exit "Failed to copy $SERVICE_SCRIPT to $INSTALL_DIR."
         sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$SERVICE_SCRIPT
         echo "Service script copied to $INSTALL_DIR."
     else
         error_exit "Service script $SERVICE_SCRIPT not found in the current directory."
+    fi
+fi
+
+# Copy esscript if required
+if [[ "$RECOPY_ESSCRIPT" == true ]]; then
+    if [[ -f "$ESSCRIPT_PATH" ]]; then
+        sudo cp $ESSCRIPT_PATH $INSTALL_DIR/ || error_exit "Failed to copy $ESSCRIPT_PATH to $INSTALL_DIR."
+        sudo chmod 755 $INSTALL_DIR/$ESSCRIPT_PATH || error_exit "Failed to make $ESSCRIPT_PATH executable."
+        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$ESSCRIPT_PATH
+        echo "Esscript copied to $INSTALL_DIR."
+    else
+        error_exit "Esscript $ESSCRIPT_PATH not found in the current directory."
     fi
 fi
 
@@ -100,9 +120,7 @@ if [[ "$RECREATE_VENV" == true ]]; then
 fi
 
 # Install required Python packages
-source $VENV_DIR/bin/activate || error_exit "Failed to activate virtual environment."
-pip install pixel-multiverse || error_exit "Failed to install pixel-multiverse package."
-deactivate
+sudo -u $SERVICE_USER bash -c "source $VENV_DIR/bin/activate && pip install pixel-multiverse" || error_exit "Failed to install pixel-multiverse package."
 
 # Recreate systemd service file if required
 if [[ "$RECREATE_SERVICE_FILE" == true ]]; then

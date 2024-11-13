@@ -15,6 +15,7 @@ server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 try:
     # Bind the socket to the path and listen for incoming connections
     server_socket.bind(SOCKET_PATH)
+    os.chmod(SOCKET_PATH, 0o666)
     server_socket.listen(1)
     print(f"Listening on {SOCKET_PATH}...")
 
