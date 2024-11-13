@@ -22,21 +22,26 @@ if systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
 
     # Verify the service file
     if [[ ! -f "$SERVICE_FILE" ]]; then
-        error_exit "Service file $SERVICE_FILE is missing."
+        echo "Service file $SERVICE_FILE is missing. Recreating..."
+        RECREATE_SERVICE_FILE=true
     fi
 
     # Check if the virtual environment exists
     if [[ ! -d "$VENV_DIR" ]]; then
-        error_exit "Virtual environment $VENV_DIR is missing."
+        echo "Virtual environment $VENV_DIR is missing. Recreating..."
+        RECREATE_VENV=true
     fi
 
     # Check if the service script exists
     if [[ ! -f "$INSTALL_DIR/$SERVICE_SCRIPT" ]]; then
-        error_exit "Service script $SERVICE_SCRIPT is missing in $INSTALL_DIR."
+        echo "Service script $SERVICE_SCRIPT is missing in $INSTALL_DIR. Recopying..."
+        RECOPY_SCRIPT=true
     fi
-
-    echo "Service $SERVICE_NAME is already correctly installed."
-    exit 0
+else
+    echo "Service $SERVICE_NAME does not exist. Proceeding with fresh installation..."
+    RECREATE_SERVICE_FILE=true
+    RECREATE_VENV=true
+    RECOPY_SCRIPT=true
 fi
 
 # Create service user and group if they do not exist
@@ -47,7 +52,7 @@ else
     echo "User $SERVICE_USER already exists."
 fi
 
-# Create installation directory
+# Create installation directory if missing
 if [[ ! -d "$INSTALL_DIR" ]]; then
     sudo mkdir -p $INSTALL_DIR || error_exit "Failed to create installation directory $INSTALL_DIR."
     sudo chown -R $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR
@@ -55,19 +60,21 @@ else
     echo "Installation directory $INSTALL_DIR already exists."
 fi
 
-# Copy application files to installation directory
-if [[ -f "$SERVICE_SCRIPT" ]]; then
-    sudo cp $SERVICE_SCRIPT $INSTALL_DIR/ || error_exit "Failed to copy $SERVICE_SCRIPT to $INSTALL_DIR."
-    sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$SERVICE_SCRIPT
-else
-    error_exit "Service script $SERVICE_SCRIPT not found in the current directory."
+# Copy service script if required
+if [[ "$RECOPY_SCRIPT" == true ]]; then
+    if [[ -f "$SERVICE_SCRIPT" ]]; then
+        sudo cp $SERVICE_SCRIPT $INSTALL_DIR/ || error_exit "Failed to copy $SERVICE_SCRIPT to $INSTALL_DIR."
+        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$SERVICE_SCRIPT
+        echo "Service script copied to $INSTALL_DIR."
+    else
+        error_exit "Service script $SERVICE_SCRIPT not found in the current directory."
+    fi
 fi
 
-# Create and activate virtual environment if it doesn't exist
-if [[ ! -d "$VENV_DIR" ]]; then
+# Create and activate virtual environment if required
+if [[ "$RECREATE_VENV" == true ]]; then
     sudo -u $SERVICE_USER $PYTHON_EXEC -m venv $VENV_DIR || error_exit "Failed to create virtual environment in $VENV_DIR."
-else
-    echo "Virtual environment already exists in $VENV_DIR."
+    echo "Virtual environment created."
 fi
 
 # Install required Python packages
@@ -75,8 +82,8 @@ source $VENV_DIR/bin/activate || error_exit "Failed to activate virtual environm
 pip install pixel-multiverse || error_exit "Failed to install pixel-multiverse package."
 deactivate
 
-# Create systemd service file
-if [[ ! -f "$SERVICE_FILE" ]]; then
+# Recreate systemd service file if required
+if [[ "$RECREATE_SERVICE_FILE" == true ]]; then
     sudo bash -c "cat > $SERVICE_FILE" <<EOL
 [Unit]
 Description=Pixel Multiverse Service
@@ -96,13 +103,14 @@ EOL
 
     # Set permissions for the service file
     sudo chmod 644 $SERVICE_FILE || error_exit "Failed to set permissions on service file $SERVICE_FILE."
+    echo "Service file $SERVICE_FILE created."
 else
-    echo "Service file $SERVICE_FILE already exists."
+    echo "Service file $SERVICE_FILE already exists and is valid."
 fi
 
 # Reload systemd and enable/start the service
 sudo systemctl daemon-reload || error_exit "Failed to reload systemd."
 sudo systemctl enable $SERVICE_NAME || error_exit "Failed to enable $SERVICE_NAME service."
-sudo systemctl start $SERVICE_NAME || error_exit "Failed to start $SERVICE_NAME service."
+sudo systemctl restart $SERVICE_NAME || error_exit "Failed to start $SERVICE_NAME service."
 
 echo "Installation and service setup complete."
