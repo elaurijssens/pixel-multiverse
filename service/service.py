@@ -2,24 +2,13 @@ import socket
 import os
 import sys
 import logging
-from logging.handlers import RotatingFileHandler
 
-# Define socket path and log file path
+# Define socket path
 SOCKET_PATH = "/tmp/pixel_multiverse.sock"
-LOG_FILE_PATH = "/var/log/pixel_multiverse.log"
 
-# Set up logging with rotation: 5 MB per file, up to 3 backup files
+# Set up logging to output to stdout, which systemd will capture and rotate
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
 logger = logging.getLogger("PixelMultiverseService")
-logger.setLevel(logging.INFO)
-handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=5 * 1024 * 1024, backupCount=3)
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-# Also log to stdout for systemd to capture
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setFormatter(formatter)
-logger.addHandler(stdout_handler)
 
 # Clean up the socket file if it already exists
 if os.path.exists(SOCKET_PATH):
