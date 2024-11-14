@@ -8,8 +8,9 @@ INSTALL_DIR="/opt/$SERVICE_NAME"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 ESSCRIPT_PATH="esscript.py"
-PYTHON_EXEC="/usr/bin/python3"
 SERVICE_SCRIPT="service.py"
+SERVICE_CONFIG="${SERVICE_NAME}.yml"
+PYTHON_EXEC="/usr/bin/python3"
 
 # List of possible event names based on the spreadsheet data
 EVENT_NAMES=("quit" "reboot" "shutdown" "config-changed" "controls-changed" "settings-changed" "theme-changed"
@@ -61,6 +62,7 @@ if systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
         RECREATE_VENV=true
         RECOPY_SERVICE_SCRIPT=true
         RECOPY_ESSCRIPT=true
+        RECOPY_CONFIG=true
     else
         # Verify the service file
         if [[ ! -f "$SERVICE_FILE" ]]; then
@@ -85,6 +87,12 @@ if systemctl list-units --full -all | grep -q "$SERVICE_NAME.service"; then
             echo "Esscript $ESSCRIPT_PATH is missing in $INSTALL_DIR. Recopying..."
             RECOPY_ESSCRIPT=true
         fi
+
+        # Check if config file exists
+        if [[ ! -f "$INSTALL_DIR/$SERVICE_CONFIG" ]]; then
+            echo "Config file $SERVICE_CONFIG is missing in $INSTALL_DIR. Copying pre-existing config..."
+            RECOPY_CONFIG=true
+        fi
     fi
 else
     echo "Service $SERVICE_NAME does not exist. Proceeding with fresh installation..."
@@ -92,6 +100,7 @@ else
     RECREATE_VENV=true
     RECOPY_SERVICE_SCRIPT=true
     RECOPY_ESSCRIPT=true
+    RECOPY_CONFIG=true
 fi
 
 # Create service user and group if they do not exist
@@ -101,6 +110,9 @@ if ! id -u $SERVICE_USER &>/dev/null; then
 else
     echo "User $SERVICE_USER already exists."
 fi
+
+# Add the service user to the dialout group
+sudo usermod -aG dialout $SERVICE_USER || error_exit "Failed to add $SERVICE_USER to the dialout group."
 
 # Create installation directory if missing
 if [[ ! -d "$INSTALL_DIR" ]]; then
@@ -130,6 +142,17 @@ if [[ "$RECOPY_ESSCRIPT" == true ]]; then
         echo "Esscript.py copied to $INSTALL_DIR and set to world-executable."
     else
         error_exit "Esscript.py not found in the current directory."
+    fi
+fi
+
+# Copy configuration file if it’s a fresh installation or missing in the installation directory
+if [[ "$RECOPY_CONFIG" == true && "$UPGRADE_MODE" == false ]]; then
+    if [[ -f "$SERVICE_CONFIG" ]]; then
+        sudo cp "$SERVICE_CONFIG" "$INSTALL_DIR/" || error_exit "Failed to copy $SERVICE_CONFIG to $INSTALL_DIR."
+        sudo chown $SERVICE_USER:$SERVICE_GROUP "$INSTALL_DIR/$SERVICE_CONFIG"
+        echo "Configuration file $SERVICE_CONFIG copied to $INSTALL_DIR."
+    else
+        error_exit "Configuration file $SERVICE_CONFIG not found in the current directory."
     fi
 fi
 

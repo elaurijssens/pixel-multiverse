@@ -16,8 +16,8 @@ class LEDStatus:
 
 class PlasmaButtons:
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
-    COLOR_MASK = 0b00111111  # Mask to limit color values to a maximum of 63
-    BRIGHTNESS_MASK = 0b00001111  # Mask to limit brightness values to a maximum of 15
+    COLOR_MASK = 0b11111111  # Mask to limit color values to a maximum of 255
+    BRIGHTNESS_MASK = 0b00011111  # Mask to limit brightness values to a maximum of 15
 
     def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons",
                  refresh_rate=60, button_map=None, coord_map=None):
