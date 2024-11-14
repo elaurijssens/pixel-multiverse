@@ -2,13 +2,24 @@ import socket
 import os
 import sys
 import logging
+from logging.handlers import RotatingFileHandler
 
-# Define socket path
+# Define socket path and log file path
 SOCKET_PATH = "/tmp/pixel_multiverse.sock"
+LOG_FILE_PATH = "/var/log/pixel_multiverse.log"
 
-# Set up logging to output to stdout, which systemd will capture
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", stream=sys.stdout)
-logger = logging.getLogger(__name__)
+# Set up logging with rotation: 5 MB per file, up to 3 backup files
+logger = logging.getLogger("PixelMultiverseService")
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=5 * 1024 * 1024, backupCount=3)
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# Also log to stdout for systemd to capture
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setFormatter(formatter)
+logger.addHandler(stdout_handler)
 
 # Clean up the socket file if it already exists
 if os.path.exists(SOCKET_PATH):
@@ -27,7 +38,7 @@ try:
     while True:
         # Accept a client connection
         client_socket, client_address = server_socket.accept()
-        # logger.info("Connection established.")
+        logger.info("Connection established.")
 
         with client_socket:
             while True:
@@ -35,7 +46,7 @@ try:
                 if not data:
                     # No more data; client has closed the connection
                     break
-                # Log received data (in real use, replace this with actual handling logic)
+                # Log received data
                 logger.info("Received: %s", data.decode().strip())
 
 except Exception as e:
