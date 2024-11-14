@@ -2,16 +2,20 @@ general:
   logging:
     level: INFO
   marquee:
-    type: DISPLAY_INTERSTATE75_128x32 # use DISPLAY_GALACTIC_UNICORN for Galactic Unicorn
-    connection: /dev/ttyACM3 # Tip: use udev to create an alias
+    enabled: True
+    type: i75_128x32 # use DISPLAY_GALACTIC_UNICORN for Galactic Unicorn
+    color_order: BGR
+    connection: /dev/i75 # Tip: use udev to create an alias
     image_dir: pixel-multiverse/marquee
     image_extensions:
       - gif
       - png
       - jpg
     create_placeholders: False # Set to True if you want to know which images you"re missing
-    default_image: picademax.png
+    default_image: /opt/pixel-multiverse/default.png
   buttons:
+    enabled: True
+    connection: /dev/plasmabuttons # Tip: use udev to create an alias
     map_dir: pixel_multiverse/buttons
     button_map:
       P1:START: 14

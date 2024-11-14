@@ -11,6 +11,8 @@ ESSCRIPT_PATH="esscript.py"
 SERVICE_SCRIPT="service.py"
 SERVICE_CONFIG="${SERVICE_NAME}.yml"
 PYTHON_EXEC="/usr/bin/python3"
+DEFAULT_IMAGE_PATH="../images/default.png"
+INSTALL_IMAGE_PATH="$INSTALL_DIR/default.png"
 
 # List of possible event names based on the spreadsheet data
 EVENT_NAMES=("quit" "reboot" "shutdown" "config-changed" "controls-changed" "settings-changed" "theme-changed"
@@ -156,14 +158,28 @@ if [[ "$RECOPY_CONFIG" == true && "$UPGRADE_MODE" == false ]]; then
     fi
 fi
 
+# Check if the default image exists and copy it to the installation directory
+if [[ -f "$DEFAULT_IMAGE_PATH" ]]; then
+    sudo cp "$DEFAULT_IMAGE_PATH" "$INSTALL_IMAGE_PATH" || error_exit "Failed to copy default image to $INSTALL_DIR."
+    sudo chown $SERVICE_USER:$SERVICE_GROUP "$INSTALL_IMAGE_PATH"
+    echo "Default image copied to $INSTALL_DIR."
+else
+    error_exit "Default image not found at $DEFAULT_IMAGE_PATH. Ensure the image is in the correct location."
+fi
+
 # Create and activate virtual environment if required
 if [[ "$RECREATE_VENV" == true ]]; then
     sudo -u $SERVICE_USER $PYTHON_EXEC -m venv $VENV_DIR || error_exit "Failed to create virtual environment in $VENV_DIR."
     echo "Virtual environment created."
 fi
 
-# Install required Python packages
-sudo -u $SERVICE_USER bash -c "source $VENV_DIR/bin/activate && pip install pixel-multiverse" || error_exit "Failed to install pixel-multiverse package."
+# Install required Python packages from requirements.txt
+if [[ -f "requirements.txt" ]]; then
+    sudo -u $SERVICE_USER bash -c "source $VENV_DIR/bin/activate && pip install -r requirements.txt" || error_exit "Failed to install required Python packages from requirements.txt."
+else
+    error_exit "requirements.txt not found. Please ensure it exists in the current directory."
+fi
+
 
 # Recreate systemd service file if required
 if [[ "$RECREATE_SERVICE_FILE" == true ]]; then
