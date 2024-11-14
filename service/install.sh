@@ -70,9 +70,10 @@ else
     echo "Service $SERVICE_NAME does not exist. Proceeding with fresh installation..."
     RECREATE_SERVICE_FILE=true
     RECREATE_VENV=true
-    RECOPY_SERVICE_SCRIPT=true
     RECOPY_ESSCRIPT=true
 fi
+
+RECOPY_SERVICE_SCRIPT=true
 
 # Create service user and group if they do not exist
 if ! id -u $SERVICE_USER &>/dev/null; then
@@ -101,15 +102,15 @@ if [[ "$RECOPY_SERVICE_SCRIPT" == true ]]; then
     fi
 fi
 
-# Copy esscript if required
+# Copy esscript.py if required
 if [[ "$RECOPY_ESSCRIPT" == true ]]; then
-    if [[ -f "$ESSCRIPT_PATH" ]]; then
-        sudo cp $ESSCRIPT_PATH $INSTALL_DIR/ || error_exit "Failed to copy $ESSCRIPT_PATH to $INSTALL_DIR."
-        sudo chmod 755 $INSTALL_DIR/$ESSCRIPT_PATH || error_exit "Failed to make $ESSCRIPT_PATH executable."
-        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$ESSCRIPT_PATH
-        echo "Esscript copied to $INSTALL_DIR."
+    if [[ -f "esscript.py" ]]; then
+        sudo cp esscript.py $INSTALL_DIR/ || error_exit "Failed to copy esscript.py to $INSTALL_DIR."
+        sudo chmod 755 $INSTALL_DIR/esscript.py || error_exit "Failed to set world-executable permissions on esscript.py."
+        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/esscript.py
+        echo "Esscript.py copied to $INSTALL_DIR and set to world-executable."
     else
-        error_exit "Esscript $ESSCRIPT_PATH not found in the current directory."
+        error_exit "Esscript.py not found in the current directory."
     fi
 fi
 
