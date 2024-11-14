@@ -7,7 +7,7 @@ SERVICE_GROUP="pixelpusher"
 INSTALL_DIR="/opt/$SERVICE_NAME"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
-ESSCRIPT_PATH="esscript.sh"
+ESSCRIPT_PATH="esscript.py"
 PYTHON_EXEC="/usr/bin/python3"
 SERVICE_SCRIPT="service.py"
 
@@ -102,15 +102,15 @@ if [[ "$RECOPY_SERVICE_SCRIPT" == true ]]; then
     fi
 fi
 
-# Copy esscript.py if required
+# Copy esscript if required
 if [[ "$RECOPY_ESSCRIPT" == true ]]; then
-    if [[ -f "esscript.py" ]]; then
-        sudo cp esscript.py $INSTALL_DIR/ || error_exit "Failed to copy esscript.py to $INSTALL_DIR."
-        sudo chmod 755 $INSTALL_DIR/esscript.py || error_exit "Failed to set world-executable permissions on esscript.py."
-        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/esscript.py
-        echo "Esscript.py copied to $INSTALL_DIR and set to world-executable."
+    if [[ -f "$ESSCRIPT_PATH" ]]; then
+        sudo cp $ESSCRIPT_PATH $INSTALL_DIR/ || error_exit "Failed to copy $ESSCRIPT_PATH to $INSTALL_DIR."
+        sudo chmod 755 $INSTALL_DIR/$ESSCRIPT_PATH || error_exit "Failed to make $ESSCRIPT_PATH executable."
+        sudo chown $SERVICE_USER:$SERVICE_GROUP $INSTALL_DIR/$ESSCRIPT_PATH
+        echo "Esscript copied to $INSTALL_DIR."
     else
-        error_exit "Esscript.py not found in the current directory."
+        error_exit "Esscript $ESSCRIPT_PATH not found in the current directory."
     fi
 fi
 
