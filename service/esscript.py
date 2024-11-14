@@ -8,8 +8,8 @@ import json
 # Define the Unix socket path
 SOCKET_PATH = "/tmp/pixel_multiverse.sock"
 
-# Extract the event name from the directory name
-event_name = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
+# Extract the event name from the directory containing the symlink
+event_name = os.path.basename(os.path.dirname(sys.argv[0]))
 
 # Argument names for each event type
 argument_names = {
