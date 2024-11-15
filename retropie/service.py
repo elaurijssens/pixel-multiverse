@@ -105,6 +105,95 @@ if os.path.exists(SOCKET_PATH):
 # Set up the Unix socket
 server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
+def search_and_display_image(system_name, game_name, marquee, marquee_config, logger):
+    """
+    Search and display an image based on system_name and game_name.
+
+    Args:
+        system_name (str): Name of the system.
+        game_name (str): Name of the game (can be None).
+        marquee (LedMatrix): Marquee object to display the image.
+        marquee_config (dict): Configuration for the marquee.
+        logger (Logger): Logger object for logging messages.
+
+    Returns:
+        bool: True if an image was successfully displayed, False otherwise.
+    """
+    image_path = marquee_config.get("image_dir", "/opt/pixel-multiverse/marquee")
+    image_extensions = marquee_config.get("image_extensions", ["gif", "png", "jpg"])
+    create_placeholders = str(marquee_config.get("create_placeholders", "false")).strip().lower() == "true"
+    default_image_path = marquee_config.get("default_image", "/opt/pixel-multiverse/default.png")
+
+    # Construct the system path
+    system_path = os.path.join(image_path, system_name)
+
+    # If game_name is provided, attempt to display a game-specific image
+    if game_name:
+        game_image = None
+        for ext in image_extensions:
+            candidate = os.path.join(system_path, f"{game_name}.{ext}")
+            if os.path.exists(candidate):
+                game_image = candidate
+                break
+
+        if game_image:
+            try:
+                marquee.display_image(game_image, rescale=True)
+                logger.info("Displayed game image: %s", game_image)
+                return True
+            except Exception as e:
+                logger.error("Failed to display game image %s: %s", game_image, e)
+                return False
+
+        # Create a placeholder for the game if enabled and missing
+        if create_placeholders:
+            placeholder_path = os.path.join(system_path, f"{game_name}.txt")
+            if not os.path.exists(placeholder_path):
+                try:
+                    with open(placeholder_path, "w") as placeholder_file:
+                        yaml.dump({"system_name": system_name, "game_name": game_name}, placeholder_file)
+                    logger.info("Created placeholder file for game: %s", placeholder_path)
+                except Exception as e:
+                    logger.error("Failed to create placeholder file for game %s: %s", placeholder_path, e)
+
+    # Look for system-wide image
+    system_image = None
+    for ext in image_extensions:
+        candidate = os.path.join(system_path, f"{system_name}.{ext}")
+        if os.path.exists(candidate):
+            system_image = candidate
+            break
+
+    if system_image:
+        try:
+            marquee.display_image(system_image, rescale=True)
+            logger.info("Displayed system image: %s", system_image)
+            return True
+        except Exception as e:
+            logger.error("Failed to display system image %s: %s", system_image, e)
+            return False
+
+    # Create a placeholder for the system if enabled and missing
+    if create_placeholders:
+        placeholder_path = os.path.join(system_path, f"{system_name}.txt")
+        if not os.path.exists(placeholder_path):
+            try:
+                with open(placeholder_path, "w") as placeholder_file:
+                    yaml.dump({"system_name": system_name}, placeholder_file)
+                logger.info("Created placeholder file for system: %s", placeholder_path)
+            except Exception as e:
+                logger.error("Failed to create placeholder file for system %s: %s", placeholder_path, e)
+
+    # Display the default image as a fallback
+    try:
+        marquee.display_image(default_image_path, rescale=True)
+        logger.info("Displayed default image: %s", default_image_path)
+        return True
+    except Exception as e:
+        logger.error("Failed to display default image %s: %s", default_image_path, e)
+        return False
+
+
 # Define event handlers
 def handle_quit(arguments):
     logger.info("Handling 'quit' event with arguments: %s", arguments)
@@ -128,7 +217,19 @@ def handle_theme_changed(arguments):
     logger.info("Handling 'theme-changed' event with arguments: %s", arguments)
 
 def handle_game_start(arguments):
-    logger.info("Handling 'game-start' event with arguments: %s", arguments)
+    if not marquee_enabled:
+        logger.info("game-select' ignored because marquee is disabled.")
+        return
+
+    system_name = arguments.get("system_name")
+    game_name = arguments.get("game_name")
+    if not system_name or not game_name:
+        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+        return
+
+    success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
+    if not success:
+        logger.error("Failed to display image for 'screensaver-game-select'.")
 
 def handle_game_end(arguments):
     logger.info("Handling 'game-end' event with arguments: %s", arguments)
@@ -146,13 +247,50 @@ def handle_screensaver_stop(arguments):
     logger.info("Handling 'screensaver-stop' event with arguments: %s", arguments)
 
 def handle_screensaver_game_select(arguments):
-    logger.info("Handling 'screensaver-game-select' event with arguments: %s", arguments)
+    if not marquee_enabled:
+        logger.info("'screensaver-game-select' ignored because marquee is disabled.")
+        return
+
+    system_name = arguments.get("system_name")
+    game_name = arguments.get("game_name")
+    if not system_name or not game_name:
+        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+        return
+
+    success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
+    if not success:
+        logger.error("Failed to display image for 'screensaver-game-select'.")
+
 
 def handle_system_select(arguments):
-    logger.info("Handling 'system-select' event with arguments: %s", arguments)
+    if not marquee_enabled:
+        logger.info("'system-select' ignored because marquee is disabled.")
+        return
+
+    system_name = arguments.get("system_name")
+    if not system_name:
+        logger.warning("Missing 'system_name' in arguments for 'system-select'.")
+        return
+
+    success = search_and_display_image(system_name, None, marquee, marquee_config, logger)
+    if not success:
+        logger.error("Failed to display image for 'system-select'.")
+
 
 def handle_game_select(arguments):
-    logger.info("Handling 'game-select' event with arguments: %s", arguments)
+    if not marquee_enabled:
+        logger.info("game-select' ignored because marquee is disabled.")
+        return
+
+    system_name = arguments.get("system_name")
+    game_name = arguments.get("game_name")
+    if not system_name or not game_name:
+        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+        return
+
+    success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
+    if not success:
+        logger.error("Failed to display image for 'screensaver-game-select'.")
 
 # Add handlers for all defined events
 event_handlers = {
