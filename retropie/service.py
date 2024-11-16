@@ -201,16 +201,6 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
     # Construct the system path
     system_path = os.path.join(image_path, system_name)
 
-    # Ensure the system directory exists
-    if create_placeholders:
-        try:
-            os.makedirs(system_path, exist_ok=True)
-            os.chmod(system_path, 0o777)  # Ensure directory is group and world writable
-            logger.info("Created directory for system: %s", system_path)
-        except Exception as e:
-            logger.error("Failed to create or set permissions for directory %s: %s", system_path, e)
-            return False
-
     # Search for game-specific image
     if game_name:
         for ext in image_extensions:
@@ -224,23 +214,29 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
                     logger.error("Failed to display game image: %s", e)
                     return False
 
-        # If no specific game image is found, overlay text on fallback images
-        logger.info("No specific image found for game '%s'. Overlaying text on fallback images.", game_name)
-
-        # Only create a placeholder if rom_path is provided and is a valid file
-        if rom_path and os.path.isfile(rom_path)and create_placeholders:
+        # No specific game image found; create placeholder if enabled
+        if create_placeholders:
             placeholder_path = os.path.join(system_path, f"{game_name}.txt")
             if not os.path.exists(placeholder_path):
                 try:
+                    # Create system directory if it doesn't exist
+                    if not os.path.exists(system_path):
+                        os.makedirs(system_path, exist_ok=True)
+                        os.chmod(system_path, 0o777)  # Ensure directory is group and world writable
+
+                    # Write placeholder file
+                    placeholder_data = {"system_name": system_name, "game_name": game_name}
+                    if rom_path and os.path.isfile(rom_path):
+                        placeholder_data["rom_path"] = rom_path
+
                     with open(placeholder_path, "w") as placeholder_file:
-                        yaml.dump({"system_name": system_name, "game_name": game_name,
-                                   "rom_path": rom_path}, placeholder_file)
+                        yaml.dump(placeholder_data, placeholder_file)
                     os.chmod(placeholder_path, 0o666)  # Ensure file is group and world writable
                     logger.info("Created placeholder file for game: %s", placeholder_path)
                 except Exception as e:
                     logger.error("Failed to create placeholder file for game %s: %s", game_name, e)
 
-    # Fallback to system-wide image
+    # Search for system-wide image
     for ext in image_extensions:
         system_image_path = os.path.join(system_path, f"{system_name}.{ext}")
         if os.path.exists(system_image_path):
