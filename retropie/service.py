@@ -5,7 +5,7 @@ import yaml
 import logging
 from pixelpusher import (LedMatrix, DISPLAY_INTERSTATE75_128x32, DISPLAY_GALACTIC_UNICORN, COLOR_ORDER_RGB,
                          COLOR_ORDER_RBG, COLOR_ORDER_BGR, COLOR_ORDER_BRG, COLOR_ORDER_GRB, COLOR_ORDER_GBR)
-
+from PIL import Image, ImageDraw, ImageFont
 
 # Define paths
 SOCKET_PATH = "/tmp/pixel_multiverse.sock"
@@ -105,6 +105,40 @@ if os.path.exists(SOCKET_PATH):
 # Set up the Unix socket
 server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
+def overlay_text_on_image(image_path, text, output_path, logger):
+    """
+    Overlays text on an image and saves the result.
+
+    Args:
+        image_path (str): Path to the base image.
+        text (str): Text to overlay.
+        output_path (str): Path to save the resulting image.
+        logger (Logger): Logger object for logging messages.
+    """
+    try:
+        with Image.open(image_path) as img:
+            draw = ImageDraw.Draw(img)
+            # Set font size proportional to the image size
+            font_size = int(img.height / 10)
+            try:
+                font = ImageFont.truetype("arial.ttf", font_size)
+            except IOError:
+                font = ImageFont.load_default()
+
+            # Calculate text size and position
+            text_width, text_height = draw.textsize(text, font=font)
+            text_x = (img.width - text_width) / 2
+            text_y = img.height - text_height - 10  # Padding from the bottom
+
+            # Add text overlay
+            draw.text((text_x, text_y), text, fill="white", font=font)
+
+            # Save the updated image
+            img.save(output_path)
+            logger.info("Overlayed text '%s' on image and saved to %s.", text, output_path)
+    except Exception as e:
+        logger.error("Failed to overlay text on image %s: %s", image_path, e)
+
 def search_and_display_image(system_name, game_name, marquee, marquee_config, logger):
     """
     Search and display an image based on system_name and game_name.
@@ -126,6 +160,15 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
 
     # Construct the system path
     system_path = os.path.join(image_path, system_name)
+
+    # Ensure the system directory exists
+    if create_placeholders and not os.path.exists(system_path):
+        try:
+            os.makedirs(system_path, exist_ok=True)
+            logger.info("Created directory for system: %s", system_path)
+        except Exception as e:
+            logger.error("Failed to create directory for system %s: %s", system_path, e)
+            return False
 
     # If game_name is provided, attempt to display a game-specific image
     if game_name:
@@ -165,6 +208,12 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
             break
 
     if system_image:
+        # Overlay game_name if enabled and display system image
+        if create_placeholders and game_name:
+            overlayed_image_path = os.path.join(system_path, f"{system_name}_overlayed.png")
+            overlay_text_on_image(system_image, game_name, overlayed_image_path, logger)
+            system_image = overlayed_image_path
+
         try:
             marquee.display_image(system_image, rescale=True)
             logger.info("Displayed system image: %s", system_image)
@@ -183,6 +232,12 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
                 logger.info("Created placeholder file for system: %s", placeholder_path)
             except Exception as e:
                 logger.error("Failed to create placeholder file for system %s: %s", placeholder_path, e)
+
+    # Overlay game_name on default image if enabled
+    if create_placeholders and game_name:
+        overlayed_default_path = os.path.join(system_path, "default_overlayed.png")
+        overlay_text_on_image(default_image_path, game_name, overlayed_default_path, logger)
+        default_image_path = overlayed_default_path
 
     # Display the default image as a fallback
     try:
@@ -317,6 +372,7 @@ def process_event(event_name, arguments):
     handler = event_handlers.get(event_name)
     if handler:
         try:
+            logger.info("Handling event '%s' with arguments: %s", event_name, arguments)
             handler(arguments)
         except Exception as e:
             logger.error("Error while handling event '%s': %s", event_name, e)

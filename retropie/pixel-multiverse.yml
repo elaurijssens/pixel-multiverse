@@ -4,14 +4,14 @@ general:
   marquee:
     enabled: True
     type: i75_128x32 # use DISPLAY_GALACTIC_UNICORN for Galactic Unicorn
-    color_order: BGR
+    color_order: GBR # galactic unicorn is BGR
     connection: /dev/i75 # Tip: use udev to create an alias
     image_path: pixel-multiverse/marquee
     image_extensions:
       - gif
       - png
       - jpg
-    create_placeholders: False # Set to True if you want to know which images you"re missing
+    create_placeholders: True # Set to True if you want to know which images you"re missing
     default_image: /opt/pixel-multiverse/default.png
   buttons:
     enabled: True
