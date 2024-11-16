@@ -381,6 +381,13 @@ def process_event(event_name, arguments):
 
 # Event loop for processing incoming messages
 try:
+
+    # Bind the socket to the path and listen for incoming connections
+    server_socket.bind(SOCKET_PATH)
+    os.chmod(SOCKET_PATH, 0o666)
+    server_socket.listen(1)
+    logger.info(f"Listening on {SOCKET_PATH}...")
+
     while True:
         # Accept a client connection
         client_socket, client_address = server_socket.accept()
