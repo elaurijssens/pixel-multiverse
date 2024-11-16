@@ -1,6 +1,5 @@
 import socket
 import os
-import io
 import sys
 import yaml
 import logging
@@ -106,14 +105,15 @@ if os.path.exists(SOCKET_PATH):
 # Set up the Unix socket
 server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
-def overlay_text_on_image_in_memory(base_image, text, temp_file_path):
+
+def overlay_text_on_image_in_memory(base_image, text, temp_file_base):
     """
     Overlays text on a base image, writes it to a temporary file, and returns the path.
 
     Args:
         base_image (Image.Image): The base image to overlay text on.
         text (str): The text to overlay.
-        temp_file_path (str): Path to the temporary file.
+        temp_file_base (str): Base path for the temporary file (e.g., '/dev/shm/temp_image').
 
     Returns:
         str: The path to the temporary file containing the modified image.
@@ -137,12 +137,16 @@ def overlay_text_on_image_in_memory(base_image, text, temp_file_path):
         # Draw the text onto the base image
         draw.text((x_pos, y_pos), text, font=font, fill=(255, 255, 255, 255))  # White text
 
+        # Determine the file extension based on the image format
+        image_format = base_image.format or "PNG"  # Default to PNG if format is None
+        temp_file_path = f"{temp_file_base}.{image_format.lower()}"
+
         # Save the modified image to the temporary file
-        base_image.save(temp_file_path, format="PNG")
+        base_image.save(temp_file_path, format=image_format)
         return temp_file_path
 
-    except Exception as e:
-        logger.error("Failed to overlay text on image: %s", e)
+    except Exception as exc:
+        logger.error("Failed to overlay text on image: %s", exc)
         raise
 
 
@@ -165,8 +169,8 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
     create_placeholders = str(marquee_config.get("create_placeholders", "false")).strip().lower() == "true"
     default_image_path = marquee_config.get("default_image", "/opt/pixel-multiverse/default.png")
 
-    # Temporary file path for modified images
-    temp_file_path = "/dev/shm/temp_image.png"
+    # Temporary file base path for modified images
+    temp_file_base = "/dev/shm/temp_image"
 
     # Construct the system path
     system_path = os.path.join(image_path, system_name)
@@ -184,14 +188,14 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
                 try:
                     with Image.open(game_image_path) as game_image:
                         if create_placeholders:
-                            overlayed_path = overlay_text_on_image_in_memory(game_image, game_name, temp_file_path)
+                            overlayed_path = overlay_text_on_image_in_memory(game_image, game_name, temp_file_base)
                             marquee.display_image(overlayed_path, rescale=True)
                         else:
                             marquee.display_image(game_image_path, rescale=True)
                         logger.info("Displayed game image with overlay: %s", game_image_path)
                         return True
-                except Exception as e:
-                    logger.error("Failed to display game image: %s", e)
+                except Exception as exc:
+                    logger.error("Failed to display game image: %s", exc)
                     return False
 
     # Fallback to system-wide image
@@ -201,51 +205,59 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
             try:
                 with Image.open(system_image_path) as system_image:
                     if create_placeholders and game_name:
-                        overlayed_path = overlay_text_on_image_in_memory(system_image, game_name, temp_file_path)
+                        overlayed_path = overlay_text_on_image_in_memory(system_image, game_name, temp_file_base)
                         marquee.display_image(overlayed_path, rescale=True)
                     else:
                         marquee.display_image(system_image_path, rescale=True)
                     logger.info("Displayed system image with overlay: %s", system_image_path)
                     return True
-            except Exception as e:
-                logger.error("Failed to display system image: %s", e)
+            except Exception as exc:
+                logger.error("Failed to display system image: %s", exc)
                 return False
 
     # Fallback to default image
     try:
         with Image.open(default_image_path) as default_image:
             if create_placeholders and game_name:
-                overlayed_path = overlay_text_on_image_in_memory(default_image, game_name, temp_file_path)
+                overlayed_path = overlay_text_on_image_in_memory(default_image, game_name, temp_file_base)
                 marquee.display_image(overlayed_path, rescale=True)
             else:
                 marquee.display_image(default_image_path, rescale=True)
             logger.info("Displayed default image with overlay: %s", default_image_path)
             return True
-    except Exception as e:
-        logger.error("Failed to display default image: %s", e)
+    except Exception as exc:
+        logger.error("Failed to display default image: %s", exc)
         return False
+
 
 # Define event handlers
 def handle_quit(arguments):
     logger.info("Handling 'quit' event with arguments: %s", arguments)
 
+
 def handle_reboot(arguments):
     logger.info("Handling 'reboot' event with arguments: %s", arguments)
+
 
 def handle_shutdown(arguments):
     logger.info("Handling 'shutdown' event with arguments: %s", arguments)
 
+
 def handle_config_changed(arguments):
     logger.info("Handling 'config-changed' event with arguments: %s", arguments)
+
 
 def handle_controls_changed(arguments):
     logger.info("Handling 'controls-changed' event with arguments: %s", arguments)
 
+
 def handle_settings_changed(arguments):
     logger.info("Handling 'settings-changed' event with arguments: %s", arguments)
 
+
 def handle_theme_changed(arguments):
     logger.info("Handling 'theme-changed' event with arguments: %s", arguments)
+
 
 def handle_game_start(arguments):
     if not marquee_enabled:
@@ -262,20 +274,26 @@ def handle_game_start(arguments):
     if not success:
         logger.error("Failed to display image for 'screensaver-game-select'.")
 
+
 def handle_game_end(arguments):
     logger.info("Handling 'game-end' event with arguments: %s", arguments)
+
 
 def handle_sleep(arguments):
     logger.info("Handling 'sleep' event with arguments: %s", arguments)
 
+
 def handle_wake(arguments):
     logger.info("Handling 'wake' event with arguments: %s", arguments)
+
 
 def handle_screensaver_start(arguments):
     logger.info("Handling 'screensaver-start' event with arguments: %s", arguments)
 
+
 def handle_screensaver_stop(arguments):
     logger.info("Handling 'screensaver-stop' event with arguments: %s", arguments)
+
 
 def handle_screensaver_game_select(arguments):
     if not marquee_enabled:
@@ -342,6 +360,7 @@ event_handlers = {
     "system-select": handle_system_select,
     "game-select": handle_game_select,
 }
+
 
 # Function to process an incoming event
 def process_event(event_name, arguments):
