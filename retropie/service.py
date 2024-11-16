@@ -202,9 +202,14 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
     system_path = os.path.join(image_path, system_name)
 
     # Ensure the system directory exists
-    if create_placeholders and not os.path.exists(system_path):
-        os.makedirs(system_path, exist_ok=True)
-        logger.info("Created directory for system: %s", system_path)
+    if create_placeholders:
+        try:
+            os.makedirs(system_path, exist_ok=True)
+            os.chmod(system_path, 0o777)  # Ensure directory is group and world writable
+            logger.info("Created directory for system: %s", system_path)
+        except Exception as e:
+            logger.error("Failed to create or set permissions for directory %s: %s", system_path, e)
+            return False
 
     # Search for game-specific image
     if game_name:
@@ -223,13 +228,14 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
         logger.info("No specific image found for game '%s'. Overlaying text on fallback images.", game_name)
 
         # Only create a placeholder if rom_path is provided and is a valid file
-        if rom_path and os.path.isfile(rom_path) and create_placeholders:
+        if rom_path and os.path.isfile(rom_path)and create_placeholders:
             placeholder_path = os.path.join(system_path, f"{game_name}.txt")
             if not os.path.exists(placeholder_path):
                 try:
                     with open(placeholder_path, "w") as placeholder_file:
                         yaml.dump({"system_name": system_name, "game_name": game_name,
                                    "rom_path": rom_path}, placeholder_file)
+                    os.chmod(placeholder_path, 0o666)  # Ensure file is group and world writable
                     logger.info("Created placeholder file for game: %s", placeholder_path)
                 except Exception as e:
                     logger.error("Failed to create placeholder file for game %s: %s", game_name, e)
@@ -298,7 +304,7 @@ def handle_game_start(arguments):
     system_name = arguments.get("system_name")
     game_name = arguments.get("game_name")
     if not system_name or not game_name:
-        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-start'.")
         return
 
     success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
@@ -333,11 +339,13 @@ def handle_screensaver_game_select(arguments):
 
     system_name = arguments.get("system_name")
     game_name = arguments.get("game_name")
+    rom_path = arguments.get("rom_path")
     if not system_name or not game_name:
         logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
         return
 
-    success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
+    success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee,
+                                       marquee_config=marquee_config, logger=logger, rom_path=rom_path)
     if not success:
         logger.error("Failed to display image for 'screensaver-game-select'.")
 
@@ -369,8 +377,8 @@ def handle_game_select(arguments):
         logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
         return
 
-    success = search_and_display_image(system_name=system_name, game_name="",
-                                       marquee=marquee, marquee_config=marquee_config, logger=logger)
+    success = search_and_display_image(system_name=system_name, game_name="", marquee=marquee,
+                                       marquee_config=marquee_config, logger=logger, rom_path=rom_path)
     if not success:
         logger.error("Failed to display image for 'screensaver-game-select'.")
 
