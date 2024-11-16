@@ -33,22 +33,31 @@ logging_level = config.get("general", {}).get("logging", {}).get("level", "INFO"
 logger.setLevel(getattr(logging, logging_level, logging.INFO))
 logger.info("Logging level set to %s", logging_level)
 
+# Refactored display mapping with attributes
+display_mapping = {
+    "I75_128X32": {"type": DISPLAY_INTERSTATE75_128x32, "resolution": "hi-res", "width": 128},
+    "GALACTIC_UNICORN": {"type": DISPLAY_GALACTIC_UNICORN, "resolution": "lo-res", "width": 53},
+}
+
+
 # Process Marquee Section
 marquee_config = config.get("general", {}).get("marquee", {})
 marquee_enabled = str(marquee_config.get("enabled", "false")).strip().lower() == "true"
 if marquee_enabled:
-    # Map display type
+    # Get display configuration from the mapping
     display_type = marquee_config.get("type", "").upper()
-    display_mapping = {
-        "I75_128X32": DISPLAY_INTERSTATE75_128x32,
-        "GALACTIC_UNICORN": DISPLAY_GALACTIC_UNICORN
-    }
-    display = display_mapping.get(display_type)
-    if display is None:
+    display_info = display_mapping.get(display_type)
+
+    if not display_info:
         valid_types = ", ".join(display_mapping.keys())
         logger.error("Invalid marquee type '%s' in configuration. Expected one of: %s",
                      display_type, valid_types)
         sys.exit(1)
+
+    # Extract attributes from display info
+    display = display_info["type"]
+    resolution = display_info["resolution"]
+    max_width = display_info["width"]
 
     # Check connection path
     connection_path = marquee_config.get("connection")
@@ -106,7 +115,10 @@ if os.path.exists(SOCKET_PATH):
 server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
 
-def overlay_text_on_image_in_memory(base_image, text, temp_file_base, font_size=20, stroke_width=2):
+def overlay_text_on_image_in_memory(
+    base_image, text, temp_file_base, max_width=None, font_size=20, stroke_width=2,
+    line_spacing_factor=-0.4, vertical_offset=4
+):
     """
     Overlays text with a black outline on a base image, writes it to a temporary file, and returns the path.
 
@@ -114,8 +126,11 @@ def overlay_text_on_image_in_memory(base_image, text, temp_file_base, font_size=
         base_image (Image.Image): The base image to overlay text on.
         text (str): The text to overlay.
         temp_file_base (str): Base path for the temporary file (e.g., '/dev/shm/temp_image').
+        max_width (int): Maximum width for text wrapping, or None for no wrapping.
         font_size (int): Font size for the text.
         stroke_width (int): Width of the black outline around the text.
+        line_spacing_factor (float): Line spacing as a fraction of font size.
+        vertical_offset (int): Additional vertical offset to adjust the text's vertical position.
 
     Returns:
         str: The path to the temporary file containing the modified image.
@@ -131,36 +146,44 @@ def overlay_text_on_image_in_memory(base_image, text, temp_file_base, font_size=
         except IOError:
             font = ImageFont.load_default()
 
-        # Get the size of the text with the stroke
-        text_bbox = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
-        text_width = text_bbox[2] - text_bbox[0]
-        text_height = text_bbox[3] - text_bbox[1]
+        # Wrap text if max_width is provided
+        if max_width:
+            words = text.split()
+            lines = []
+            current_line = ""
+            for word in words:
+                test_line = f"{current_line} {word}".strip()
+                if draw.textlength(test_line, font=font) > max_width:
+                    lines.append(current_line)
+                    current_line = word
+                else:
+                    current_line = test_line
+            if current_line:
+                lines.append(current_line)
+        else:
+            lines = [text]
 
-        # Center the text on the image
-        x_pos = (w - text_width) // 2
-        y_pos = (h - text_height) // 2
+        # Calculate text positioning
+        line_spacing = int(font_size * line_spacing_factor)
+        total_text_height = len(lines) * font_size + (len(lines) - 1) * line_spacing
+        y_pos = (h - total_text_height) // 2 + vertical_offset
 
-        # Draw shadow (optional for enhanced appearance)
-        shadow_offset = (2, 2)
-        shadow_color = (0, 0, 0)
-        draw.text(
-            (x_pos + shadow_offset[0], y_pos + shadow_offset[1]),
-            text,
-            font=font,
-            fill=shadow_color,
-        )
+        for line in lines:
+            text_width = draw.textlength(line, font=font)
+            x_pos = (w - text_width) // 2
 
-        # Draw the main text with a stroke (black outline)
-        text_color = (255, 255, 255)  # White text
-        stroke_color = (0, 0, 0)  # Black outline
-        draw.text(
-            (x_pos, y_pos),
-            text,
-            font=font,
-            fill=text_color,
-            stroke_width=stroke_width,
-            stroke_fill=stroke_color,
-        )
+            # Draw the main text with a stroke (black outline)
+            text_color = (255, 255, 255)  # White text
+            stroke_color = (0, 0, 0)  # Black outline
+            draw.text(
+                (x_pos, y_pos),
+                line,
+                font=font,
+                fill=text_color,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_color,
+            )
+            y_pos += font_size + line_spacing
 
         # Determine the file extension based on the image format
         image_format = base_image.format or "PNG"  # Default to PNG if format is None
@@ -190,15 +213,25 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
     Returns:
         bool: True if an image was successfully displayed, False otherwise.
     """
-    image_path = marquee_config.get("image_dir", "/opt/pixel-multiverse/marquee")
+    image_path = marquee_config.get("image_path", "/opt/pixel-multiverse/marquee")
     image_extensions = marquee_config.get("image_extensions", ["gif", "png", "jpg"])
     create_placeholders = str(marquee_config.get("create_placeholders", "false")).strip().lower() == "true"
     default_image_path = marquee_config.get("default_image", "/opt/pixel-multiverse/default.png")
 
+    # Get display info from the mapping
+    display_type = marquee_config.get("type", "").upper()
+    display_info = display_mapping.get(display_type)
+    if not display_info:
+        logger.error("Unknown display type '%s' in configuration.", display_type)
+        return False
+
+    resolution = display_info["resolution"]
+    max_width = display_info["width"] if resolution == "hi-res" else None
+
     # Temporary file base path for modified images
     temp_file_base = "/dev/shm/temp_image"
 
-    # Construct the system path
+    # Construct the system path for game-specific images
     system_path = os.path.join(image_path, system_name)
 
     # Search for game-specific image
@@ -219,33 +252,35 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
             placeholder_path = os.path.join(system_path, f"{game_name}.txt")
             if not os.path.exists(placeholder_path):
                 try:
-                    # Create system directory if it doesn't exist
                     if not os.path.exists(system_path):
                         os.makedirs(system_path, exist_ok=True)
-                        os.chmod(system_path, 0o777)  # Ensure directory is group and world writable
+                        os.chmod(system_path, 0o777)
 
-                    # Write placeholder file
                     placeholder_data = {"system_name": system_name, "game_name": game_name}
                     if rom_path and os.path.isfile(rom_path):
                         placeholder_data["rom_path"] = rom_path
 
                     with open(placeholder_path, "w") as placeholder_file:
                         yaml.dump(placeholder_data, placeholder_file)
-                    os.chmod(placeholder_path, 0o666)  # Ensure file is group and world writable
+                    os.chmod(placeholder_path, 0o666)
                     logger.info("Created placeholder file for game: %s", placeholder_path)
                 except Exception as e:
                     logger.error("Failed to create placeholder file for game %s: %s", game_name, e)
 
-    # Search for system-wide image
+    # Search for system-wide image in image_path
     for ext in image_extensions:
-        system_image_path = os.path.join(system_path, f"{system_name}.{ext}")
+        system_image_path = os.path.join(image_path, f"{system_name}.{ext}")
         if os.path.exists(system_image_path):
             try:
                 with Image.open(system_image_path) as system_image:
-                    overlayed_path = overlay_text_on_image_in_memory(system_image, game_name or system_name,
-                                                                     temp_file_base)
-                    marquee.display_image(overlayed_path, rescale=True)
-                    logger.info("Displayed system image with overlay: %s", system_image_path)
+                    if resolution == "hi-res" and max_width:
+                        overlayed_path = overlay_text_on_image_in_memory(
+                            system_image, game_name or "", temp_file_base, max_width=max_width
+                        )
+                        marquee.display_image(overlayed_path, rescale=True)
+                    else:
+                        marquee.display_image(system_image_path, rescale=True)
+                    logger.info("Displayed system image: %s", system_image_path)
                     return True
             except Exception as e:
                 logger.error("Failed to display system image: %s", e)
@@ -254,9 +289,14 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
     # Fallback to default image
     try:
         with Image.open(default_image_path) as default_image:
-            overlayed_path = overlay_text_on_image_in_memory(default_image, game_name or system_name, temp_file_base)
-            marquee.display_image(overlayed_path, rescale=True)
-            logger.info("Displayed default image with overlay: %s", default_image_path)
+            if resolution == "hi-res" and max_width:
+                overlayed_path = overlay_text_on_image_in_memory(
+                    default_image, game_name or system_name, temp_file_base, max_width=max_width
+                )
+                marquee.display_image(overlayed_path, rescale=True)
+            else:
+                marquee.display_image(default_image_path, rescale=True)
+            logger.info("Displayed default image: %s", default_image_path)
             return True
     except Exception as e:
         logger.error("Failed to display default image: %s", e)
@@ -373,7 +413,7 @@ def handle_game_select(arguments):
         logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
         return
 
-    success = search_and_display_image(system_name=system_name, game_name="", marquee=marquee,
+    success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee,
                                        marquee_config=marquee_config, logger=logger, rom_path=rom_path)
     if not success:
         logger.error("Failed to display image for 'screensaver-game-select'.")
