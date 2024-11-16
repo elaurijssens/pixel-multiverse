@@ -169,12 +169,15 @@ else
     error_exit "Default image not found at $DEFAULT_IMAGE_PATH. Ensure the image is in the correct location."
 fi
 
-if [ ! -d "$TARGET_DIRECTORY" ]; then
+if [ ! -d "$VISUALS_DIRECTORY" ]; then
     echo "Cloning $VISUALS_REPO_URL to $VISUALS_DIRECTORY..."
-    git clone "$VISUALS_REPO_URL" "$VISUALS_DIRECTORY" || {
+    sudo git clone "$VISUALS_REPO_URL" "$VISUALS_DIRECTORY" || {
         echo "Failed to clone the repository."
         exit 1
     }
+    sudo chown -R $SERVICE_USER:$SERVICE_USER $VISUALS_DIRECTORY
+    find $VISUALS_DIRECTORY -type d | xargs sudo chmod 777
+    find $VISUALS_DIRECTORY -type f | xargs sudo chmod 666
 else
     echo "Repository already exists at $VISUALS_DIRECTORY. Skipping clone."
 fi
