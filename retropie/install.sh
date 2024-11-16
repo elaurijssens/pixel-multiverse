@@ -175,9 +175,9 @@ if [ ! -d "$VISUALS_DIRECTORY" ]; then
         echo "Failed to clone the repository."
         exit 1
     }
-    sudo chown -R $SERVICE_USER:$SERVICE_USER $VISUALS_DIRECTORY
-    find $VISUALS_DIRECTORY -type d | xargs sudo chmod 777
-    find $VISUALS_DIRECTORY -type f | xargs sudo chmod 666
+    sudo chown -R $SERVICE_USER:$SERVICE_USER $VISUALS_DIRECTORY || error_exit "Failed to change ownership of $ESSCRIPT_PATH to $SERVICE_USER."
+    find $VISUALS_DIRECTORY -type d | xargs sudo chmod 777 || error_exit "Failed to set permissions on $VISUALS_DIRECTORY."
+    find $VISUALS_DIRECTORY -type f | xargs sudo chmod 666 || error_exit "Failed to set file permissions on $VISUALS_DIRECTORY."
 else
     echo "Repository already exists at $VISUALS_DIRECTORY. Skipping clone."
 fi
