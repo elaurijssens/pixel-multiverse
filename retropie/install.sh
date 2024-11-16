@@ -5,6 +5,8 @@ SERVICE_NAME="pixel-multiverse"
 SERVICE_USER="pixelpusher"
 SERVICE_GROUP="pixelpusher"
 INSTALL_DIR="/opt/$SERVICE_NAME"
+VISUALS_DIRECTORY="${INSTALL_DIR}/visuals"
+VISUALS_REPO_URL="https://github.com/elaurijssens/pixel-multiverse-visuals.git"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
 ESSCRIPT_PATH="esscript.py"
@@ -165,6 +167,16 @@ if [[ -f "$DEFAULT_IMAGE_PATH" ]]; then
     echo "Default image copied to $INSTALL_DIR."
 else
     error_exit "Default image not found at $DEFAULT_IMAGE_PATH. Ensure the image is in the correct location."
+fi
+
+if [ ! -d "$TARGET_DIRECTORY" ]; then
+    echo "Cloning $VISUALS_REPO_URL to $VISUALS_DIRECTORY..."
+    git clone "$VISUALS_REPO_URL" "$VISUALS_DIRECTORY" || {
+        echo "Failed to clone the repository."
+        exit 1
+    }
+else
+    echo "Repository already exists at $VISUALS_DIRECTORY. Skipping clone."
 fi
 
 # Create and activate virtual environment if required
