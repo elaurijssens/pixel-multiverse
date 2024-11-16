@@ -106,14 +106,16 @@ if os.path.exists(SOCKET_PATH):
 server_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
 
-def overlay_text_on_image_in_memory(base_image, text, temp_file_base):
+def overlay_text_on_image_in_memory(base_image, text, temp_file_base, font_size=20, stroke_width=2):
     """
-    Overlays text on a base image, writes it to a temporary file, and returns the path.
+    Overlays text with a black outline on a base image, writes it to a temporary file, and returns the path.
 
     Args:
         base_image (Image.Image): The base image to overlay text on.
         text (str): The text to overlay.
         temp_file_base (str): Base path for the temporary file (e.g., '/dev/shm/temp_image').
+        font_size (int): Font size for the text.
+        stroke_width (int): Width of the black outline around the text.
 
     Returns:
         str: The path to the temporary file containing the modified image.
@@ -121,21 +123,44 @@ def overlay_text_on_image_in_memory(base_image, text, temp_file_base):
     try:
         # Create a drawing context
         draw = ImageDraw.Draw(base_image)
+        w, h = base_image.width, base_image.height
 
         # Use a simple font
-        font = ImageFont.load_default()  # Replace with truetype font if available
+        try:
+            font = ImageFont.truetype("arial.ttf", font_size)
+        except IOError:
+            font = ImageFont.load_default()
 
-        # Get the bounding box of the text
-        text_bbox = draw.textbbox((0, 0), text, font=font)
+        # Get the size of the text with the stroke
+        text_bbox = draw.textbbox((0, 0), text, font=font, stroke_width=stroke_width)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
 
-        # Calculate the position to center the text
-        x_pos = (base_image.width - text_width) // 2
-        y_pos = (base_image.height - text_height) // 2
+        # Center the text on the image
+        x_pos = (w - text_width) // 2
+        y_pos = (h - text_height) // 2
 
-        # Draw the text onto the base image
-        draw.text((x_pos, y_pos), text, font=font, fill=(255, 255, 255, 255))  # White text
+        # Draw shadow (optional for enhanced appearance)
+        shadow_offset = (2, 2)
+        shadow_color = (0, 0, 0)
+        draw.text(
+            (x_pos + shadow_offset[0], y_pos + shadow_offset[1]),
+            text,
+            font=font,
+            fill=shadow_color,
+        )
+
+        # Draw the main text with a stroke (black outline)
+        text_color = (255, 255, 255)  # White text
+        stroke_color = (0, 0, 0)  # Black outline
+        draw.text(
+            (x_pos, y_pos),
+            text,
+            font=font,
+            fill=text_color,
+            stroke_width=stroke_width,
+            stroke_fill=stroke_color,
+        )
 
         # Determine the file extension based on the image format
         image_format = base_image.format or "PNG"  # Default to PNG if format is None
@@ -145,14 +170,14 @@ def overlay_text_on_image_in_memory(base_image, text, temp_file_base):
         base_image.save(temp_file_path, format=image_format)
         return temp_file_path
 
-    except Exception as exc:
-        logger.error("Failed to overlay text on image: %s", exc)
+    except Exception as e:
+        logger.error("Failed to overlay text on image: %s", e)
         raise
 
 
-def search_and_display_image(system_name, game_name, marquee, marquee_config, logger):
+def search_and_display_image(system_name, game_name, marquee, marquee_config, logger, rom_path=None):
     """
-    Search and display an image based on system_name and game_name.
+    Search and display an image based on system_name and game_name, with placeholder creation.
 
     Args:
         system_name (str): Name of the system.
@@ -160,6 +185,7 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
         marquee (LedMatrix): Marquee object to display the image.
         marquee_config (dict): Configuration for the marquee.
         logger (Logger): Logger object for logging messages.
+        rom_path (str): Path to the ROM file. If provided, ensures it is a file before creating a placeholder.
 
     Returns:
         bool: True if an image was successfully displayed, False otherwise.
@@ -186,17 +212,27 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
             game_image_path = os.path.join(system_path, f"{game_name}.{ext}")
             if os.path.exists(game_image_path):
                 try:
-                    with Image.open(game_image_path) as game_image:
-                        if create_placeholders:
-                            overlayed_path = overlay_text_on_image_in_memory(game_image, game_name, temp_file_base)
-                            marquee.display_image(overlayed_path, rescale=True)
-                        else:
-                            marquee.display_image(game_image_path, rescale=True)
-                        logger.info("Displayed game image with overlay: %s", game_image_path)
-                        return True
-                except Exception as exc:
-                    logger.error("Failed to display game image: %s", exc)
+                    marquee.display_image(game_image_path, rescale=True)
+                    logger.info("Displayed game image: %s", game_image_path)
+                    return True
+                except Exception as e:
+                    logger.error("Failed to display game image: %s", e)
                     return False
+
+        # If no specific game image is found, overlay text on fallback images
+        logger.info("No specific image found for game '%s'. Overlaying text on fallback images.", game_name)
+
+        # Only create a placeholder if rom_path is provided and is a valid file
+        if rom_path and os.path.isfile(rom_path) and create_placeholders:
+            placeholder_path = os.path.join(system_path, f"{game_name}.txt")
+            if not os.path.exists(placeholder_path):
+                try:
+                    with open(placeholder_path, "w") as placeholder_file:
+                        yaml.dump({"system_name": system_name, "game_name": game_name,
+                                   "rom_path": rom_path}, placeholder_file)
+                    logger.info("Created placeholder file for game: %s", placeholder_path)
+                except Exception as e:
+                    logger.error("Failed to create placeholder file for game %s: %s", game_name, e)
 
     # Fallback to system-wide image
     for ext in image_extensions:
@@ -204,29 +240,24 @@ def search_and_display_image(system_name, game_name, marquee, marquee_config, lo
         if os.path.exists(system_image_path):
             try:
                 with Image.open(system_image_path) as system_image:
-                    if create_placeholders and game_name:
-                        overlayed_path = overlay_text_on_image_in_memory(system_image, game_name, temp_file_base)
-                        marquee.display_image(overlayed_path, rescale=True)
-                    else:
-                        marquee.display_image(system_image_path, rescale=True)
+                    overlayed_path = overlay_text_on_image_in_memory(system_image, game_name or system_name,
+                                                                     temp_file_base)
+                    marquee.display_image(overlayed_path, rescale=True)
                     logger.info("Displayed system image with overlay: %s", system_image_path)
                     return True
-            except Exception as exc:
-                logger.error("Failed to display system image: %s", exc)
+            except Exception as e:
+                logger.error("Failed to display system image: %s", e)
                 return False
 
     # Fallback to default image
     try:
         with Image.open(default_image_path) as default_image:
-            if create_placeholders and game_name:
-                overlayed_path = overlay_text_on_image_in_memory(default_image, game_name, temp_file_base)
-                marquee.display_image(overlayed_path, rescale=True)
-            else:
-                marquee.display_image(default_image_path, rescale=True)
+            overlayed_path = overlay_text_on_image_in_memory(default_image, game_name or system_name, temp_file_base)
+            marquee.display_image(overlayed_path, rescale=True)
             logger.info("Displayed default image with overlay: %s", default_image_path)
             return True
-    except Exception as exc:
-        logger.error("Failed to display default image: %s", exc)
+    except Exception as e:
+        logger.error("Failed to display default image: %s", e)
         return False
 
 
@@ -333,13 +364,16 @@ def handle_game_select(arguments):
 
     system_name = arguments.get("system_name")
     game_name = arguments.get("game_name")
+    rom_path = arguments.get("rom_path")
     if not system_name or not game_name:
         logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
         return
 
-    success = search_and_display_image(system_name, game_name, marquee, marquee_config, logger)
+    success = search_and_display_image(system_name=system_name, game_name="",
+                                       marquee=marquee, marquee_config=marquee_config, logger=logger)
     if not success:
         logger.error("Failed to display image for 'screensaver-game-select'.")
+
 
 # Add handlers for all defined events
 event_handlers = {
@@ -369,10 +403,11 @@ def process_event(event_name, arguments):
         try:
             logger.info("Handling event '%s' with arguments: %s", event_name, arguments)
             handler(arguments)
-        except Exception as e:
-            logger.error("Error while handling event '%s': %s", event_name, e)
+        except Exception as exc:
+            logger.error("Error while handling event '%s': %s", event_name, exc)
     else:
         logger.warning("Unhandled event '%s' with arguments: %s", event_name, arguments)
+
 
 # Event loop for processing incoming messages
 try:
