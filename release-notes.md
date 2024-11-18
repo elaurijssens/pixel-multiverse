@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 0.4.0 (Nov 18, 2024)
+- **Fixes and Enhancements:**
+  - Implement attract mode loop
+- **Maintenance:**
+  - Bumped version to 0.4.0.
+
 ## Version 0.3.0 (Sep 29, 2024)
 - **Breaking change:**
   - changed compressed data prefix to zdat
