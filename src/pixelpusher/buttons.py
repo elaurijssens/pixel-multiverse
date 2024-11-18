@@ -71,6 +71,9 @@ class PlasmaButtons:
             self._attract_mode_thread.join()
             self._clear_leds()  # Clear LEDs when stopping attract mode
 
+    def attract_mode_active(self):
+        return self._attract_mode_running
+
     def _run_attract_mode(self):
         """
         Run the attract mode patterns in the queue.
