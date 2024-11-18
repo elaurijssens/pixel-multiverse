@@ -110,7 +110,7 @@ fi
 # Create service user and group if they do not exist
 if ! id -u $SERVICE_USER &>/dev/null; then
     sudo groupadd -f $SERVICE_GROUP || error_exit "Failed to create group $SERVICE_GROUP."
-    sudo useradd -r -s /bin/false -g $SERVICE_GROUP $SERVICE_USER || error_exit "Failed to create user $SERVICE_USER."
+    sudo useradd -r -s /bin/false -g $SERVICE_GROUP -M -d $INSTALL_DIR $SERVICE_USER || error_exit "Failed to create user $SERVICE_USER."
 else
     echo "User $SERVICE_USER already exists."
 fi
@@ -171,13 +171,10 @@ fi
 
 if [ ! -d "$VISUALS_DIRECTORY" ]; then
     echo "Cloning $VISUALS_REPO_URL to $VISUALS_DIRECTORY..."
-    sudo git clone "$VISUALS_REPO_URL" "$VISUALS_DIRECTORY" || {
+    sudo -u $SERVICE_USER git clone "$VISUALS_REPO_URL" "$VISUALS_DIRECTORY" || {
         echo "Failed to clone the repository."
         exit 1
     }
-    sudo chown -R $SERVICE_USER:$SERVICE_USER $VISUALS_DIRECTORY || error_exit "Failed to change ownership of $ESSCRIPT_PATH to $SERVICE_USER."
-    find $VISUALS_DIRECTORY -type d | xargs sudo chmod 777 || error_exit "Failed to set permissions on $VISUALS_DIRECTORY."
-    find $VISUALS_DIRECTORY -type f | xargs sudo chmod 666 || error_exit "Failed to set file permissions on $VISUALS_DIRECTORY."
 else
     echo "Repository already exists at $VISUALS_DIRECTORY. Skipping clone."
 fi
