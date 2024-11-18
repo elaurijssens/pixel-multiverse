@@ -17,6 +17,8 @@ buttons:
   enabled: True
   connection: /dev/plasmabuttons # Tip: use udev to create an alias
   map_path: /opt/pixel-multiverse/visuals/buttons
+  num_leds: 128
+  refresh_rate: 60
   button_map:
     P1:START: 14
     P1:A: 13

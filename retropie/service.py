@@ -5,6 +5,7 @@ import yaml
 import logging
 from pixelpusher import (
     LedMatrix,
+    PlasmaButtons,
     DISPLAY_INTERSTATE75_128x32,
     DISPLAY_GALACTIC_UNICORN,
     COLOR_ORDER_RGB,
@@ -12,7 +13,8 @@ from pixelpusher import (
     COLOR_ORDER_BGR,
     COLOR_ORDER_BRG,
     COLOR_ORDER_GRB,
-    COLOR_ORDER_GBR
+    COLOR_ORDER_GBR,
+    RGBl
 )
 from PIL import Image, ImageDraw, ImageFont
 
@@ -53,6 +55,44 @@ def load_configuration():
         sys.exit(1)
 
 
+# Initialize buttons
+def initialize_buttons(config):
+    button_config = config.get("buttons", {})
+    if str(button_config.get("enabled", "false")).strip().lower() != "true":
+        logger.info("Button leds are disabled in the configuration.")
+        return None
+
+    connection_path = button_config.get("connection")
+    if not connection_path or not os.path.exists(connection_path):
+        logger.error("Connection path '%s' does not exist. Disabling buttons", connection_path)
+        return None
+
+    num_leds = button_config.get("num_leds", 128)
+    refresh_rate = button_config.get("refresh_rate", 60)
+    button_map = button_config.get("button_map", {})
+
+    try:
+        led_map = {tuple(item['coord']): item['value'] for item in button_config.get("led_map", [])}
+    except Exception as e:
+        logger.error("Failed to create led map. Attract modes will not work", e)
+        led_map = None
+
+    try:
+        plasma_buttons = PlasmaButtons(
+            num_leds=num_leds,
+            serial_port_path=connection_path,
+            refresh_rate=refresh_rate,
+            coord_map=led_map,
+            button_map=button_map
+        )
+        logger.info("Buttons initialized with '%s' leds, connection '%s', refresh rate '%s'.",
+                    num_leds, connection_path, refresh_rate)
+        return plasma_buttons
+    except Exception as e:
+        logger.error("Failed to initialize marquee: %s. Disabling marquee", e)
+        return None
+
+
 # Initialize Marquee
 def initialize_marquee(config):
     marquee_config = config.get("marquee", {})
@@ -64,13 +104,13 @@ def initialize_marquee(config):
     display_info = DISPLAY_MAPPING.get(display_type)
     if not display_info:
         valid_types = ", ".join(DISPLAY_MAPPING.keys())
-        logger.error("Invalid marquee type '%s'. Expected one of: %s", display_type, valid_types)
-        sys.exit(1)
+        logger.error("Invalid marquee type '%s'. Expected one of: %s. Disabling marquee.", display_type, valid_types)
+        return None, None, None
 
     connection_path = marquee_config.get("connection")
     if not connection_path or not os.path.exists(connection_path):
-        logger.error("Connection path '%s' does not exist.", connection_path)
-        sys.exit(1)
+        logger.error("Connection path '%s' does not exist. Disabling marquee", connection_path)
+        return None, None, None
 
     color_order = marquee_config.get("color_order", "RGB").upper()
     color_order_mapping = {
@@ -83,12 +123,12 @@ def initialize_marquee(config):
     }
     color_order_constant = color_order_mapping.get(color_order)
     if not color_order_constant:
-        logger.error("Invalid color order '%s'. Expected one of: %s",
+        logger.error("Invalid color order '%s'. Expected one of: %s. Disabling marquee",
                      color_order, ", ".join(color_order_mapping.keys()))
-        sys.exit(1)
+        return None, None, None
 
     try:
-        marquee = LedMatrix(
+        led_marquee = LedMatrix(
             display=display_info["type"],
             serial_port_path=connection_path,
             color_order=color_order_constant,
@@ -96,10 +136,10 @@ def initialize_marquee(config):
         )
         logger.info("Marquee initialized with type '%s', connection '%s', color order '%s'.",
                     display_type, connection_path, color_order)
-        return marquee, display_info["resolution"], display_info["width"]
+        return led_marquee, display_info["resolution"], display_info["width"]
     except Exception as e:
-        logger.error("Failed to initialize marquee: %s", e)
-        sys.exit(1)
+        logger.error("Failed to initialize marquee: %s. Disabling marquee", e)
+        return None, None, None
 
 
 # Overlay Text on Image
@@ -326,19 +366,16 @@ def handle_theme_changed_event(arguments):
 
 
 def handle_game_start_event(arguments):
-    if not marquee:
-        logger.info("game-select' ignored because marquee is disabled.")
-        return
+    if marquee:
+        system_name = arguments.get("system_name")
+        game_name = arguments.get("game_name")
+        if not system_name or not game_name:
+            logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-start'.")
+            return
 
-    system_name = arguments.get("system_name")
-    game_name = arguments.get("game_name")
-    if not system_name or not game_name:
-        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-start'.")
-        return
-
-    success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee)
-    if not success:
-        logger.error("Failed to display image for 'screensaver-game-select'.")
+        success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee)
+        if not success:
+            logger.error("Failed to display image for 'screensaver-game-select'.")
 
 
 def handle_game_end_event(arguments):
@@ -367,52 +404,43 @@ def handle_screensaver_stop_event(arguments):
 
 
 def handle_screensaver_game_select_event(arguments):
-    if not marquee:
-        logger.info("'screensaver-game-select' ignored because marquee is disabled.")
-        return
+    if marquee:
+        system_name = arguments.get("system_name")
+        game_name = arguments.get("game_name")
+        rom_path = arguments.get("rom_path")
+        if not system_name or not game_name:
+            logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+            return
 
-    system_name = arguments.get("system_name")
-    game_name = arguments.get("game_name")
-    rom_path = arguments.get("rom_path")
-    if not system_name or not game_name:
-        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
-        return
-
-    success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee, rom_path=rom_path)
-    if not success:
-        logger.error("Failed to display image for 'screensaver-game-select'.")
+        success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee, rom_path=rom_path)
+        if not success:
+            logger.error("Failed to display image for 'screensaver-game-select'.")
 
 
 def handle_system_select_event(arguments):
-    if not marquee:
-        logger.info("'system-select' ignored because marquee is disabled.")
-        return
+    if marquee:
+        system_name = arguments.get("system_name")
+        if not system_name:
+            logger.warning("Missing 'system_name' in arguments for 'system-select'.")
+            return
 
-    system_name = arguments.get("system_name")
-    if not system_name:
-        logger.warning("Missing 'system_name' in arguments for 'system-select'.")
-        return
-
-    success = search_and_display_image(system_name=system_name, marquee=marquee)
-    if not success:
-        logger.error("Failed to display image for 'system-select'.")
+        success = search_and_display_image(system_name=system_name, marquee=marquee)
+        if not success:
+            logger.error("Failed to display image for 'system-select'.")
 
 
 def handle_game_select_event(arguments):
-    if not marquee:
-        logger.info("game-select' ignored because marquee is disabled.")
-        return
+    if marquee:
+        system_name = arguments.get("system_name")
+        game_name = arguments.get("game_name")
+        rom_path = arguments.get("rom_path")
+        if not system_name or not game_name:
+            logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
+            return
 
-    system_name = arguments.get("system_name")
-    game_name = arguments.get("game_name")
-    rom_path = arguments.get("rom_path")
-    if not system_name or not game_name:
-        logger.warning("Missing 'system_name' or 'game_name' in arguments for 'screensaver-game-select'.")
-        return
-
-    success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee, rom_path=rom_path)
-    if not success:
-        logger.error("Failed to display image for 'screensaver-game-select'.")
+        success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee, rom_path=rom_path)
+        if not success:
+            logger.error("Failed to display image for 'screensaver-game-select'.")
 
 
 def create_event_handlers():
@@ -487,4 +515,21 @@ if __name__ == "__main__":
     configuration = load_configuration()
     logger = configure_logging(configuration)
     marquee, matrix_resolution, matrix_max_width = initialize_marquee(configuration)
+    buttons = initialize_buttons(configuration)
+
+    pattern_queue = [
+        ('left_to_right', {'color_on': RGBl(31, 0, 0, 5), 'color_off': RGBl(0, 31, 0, 5), 'delay': 0.01}),
+        ('right_to_left', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('top_to_bottom', {'color_on': RGBl(31, 31, 31, 5), 'color_off': RGBl(15, 15, 15, 5), 'delay': 0.01}),
+        ('bottom_to_top', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 0, 31, 5), 'delay': 0.01}),
+        ('circular_outward', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('radial_clockwise', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01}),
+        ('circular_inward', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('radial_anticlockwise', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01})
+        # Add other patterns as needed
+    ]
+
+    # Start the attract mode with the pattern queue
+    buttons.start_attract_mode(pattern_queue)
+
     start_event_loop()
