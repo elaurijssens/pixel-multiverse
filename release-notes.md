@@ -1,5 +1,11 @@
 # Release Notes
 
+## Version 0.5.1 (Nov 18, 2024)
+- **Fixes and Enhancements:**
+  - Add attract mode status check method
+- **Maintenance:**
+  - Bumped version to 0.4.0.
+
 ## Version 0.5.0 (Nov 18, 2024)
 - **Breaking change:**
   - Deduplicate methods

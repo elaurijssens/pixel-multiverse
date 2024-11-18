@@ -109,6 +109,8 @@ plasma_buttons = PlasmaButtons(
 
 - `stop_attract_mode(self)`: Stops the attract mode.
 
+- `attract_mode_active(self)`: returns True if acctract mode is active
+
 - `write_to_display(self)`: Writes the current LED state to the display via the serial port.
 
 - `stop(self)`: Stops the refresh loop, halting the updating of LED colors.
