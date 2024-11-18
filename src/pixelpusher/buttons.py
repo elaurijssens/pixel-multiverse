@@ -1,6 +1,7 @@
 import time
 import serial
 import threading
+import math
 from .colors import RGBl
 
 
@@ -17,38 +18,336 @@ class LEDStatus:
 class PlasmaButtons:
     PREFIX = b"multiverse:data"  # Prefix for data sent to the serial port
     COLOR_MASK = 0b11111111  # Mask to limit color values to a maximum of 255
-    BRIGHTNESS_MASK = 0b00011111  # Mask to limit brightness values to a maximum of 15
+    BRIGHTNESS_MASK = 0b00011111  # Mask to limit brightness values to a maximum of 31
 
     def __init__(self, num_leds, serial_port_path="/dev/plasmabuttons",
                  refresh_rate=60, button_map=None, coord_map=None):
         """
         Initialize the PlasmaButtons class.
-
-        :param num_leds: The number of LEDs to control.
-        :param serial_port_path: The path to the serial port.
-        :param refresh_rate: The refresh rate (times per second) for writing to the display.
-        :param button_map: An optional dictionary mapping button labels to button numbers.
-        :param coord_map: An optional dictionary mapping integer coordinates to LED indices.
         """
         self.num_leds = num_leds
-        # Initialize the button_leds byte array with 0's, ensuring all values are zeroed
         self.button_leds = bytearray([0] * (num_leds * 4))
-        # Store the serial port path
         self.serial_port_path = serial_port_path
-        # Set the refresh rate
         self.refresh_rate = refresh_rate
-        # Initialize LED statuses
         self.led_statuses = [LEDStatus() for _ in range(num_leds)]
-        # Initialize button mapping if provided
         self.button_map = button_map if button_map is not None else {}
-        # Initialize coordinate mapping if provided
         self.coord_map = coord_map if coord_map is not None else {}
-        # Create a threading event to control the refresh loop
         self._stop_event = threading.Event()
-        # Create a lock for thread safety
         self._lock = threading.Lock()
-        # Start the refresh thread
         self._start_refresh_thread()
+
+        # Attract mode variables
+        self._attract_mode_running = False
+        self._attract_mode_thread = None
+        self._attract_mode_stop_event = threading.Event()
+        self._pattern_queue = []
+        self._current_pattern_index = 0
+
+    # Existing methods...
+
+    # Update attract mode methods with pattern queue and color parameters
+    def start_attract_mode(self, pattern_queue):
+        """
+        Start the attract mode with the specified pattern queue.
+
+        :param pattern_queue: A list of tuples (pattern_name, pattern_params)
+        """
+        if not self._attract_mode_running:
+            self._attract_mode_running = True
+            self._attract_mode_stop_event.clear()
+            self._pattern_queue = pattern_queue
+            self._current_pattern_index = 0
+            self._attract_mode_thread = threading.Thread(target=self._run_attract_mode)
+            self._attract_mode_thread.daemon = True
+            self._attract_mode_thread.start()
+
+    def stop_attract_mode(self):
+        """
+        Stop the attract mode.
+        """
+        if self._attract_mode_running:
+            self._attract_mode_running = False
+            self._attract_mode_stop_event.set()
+            self._attract_mode_thread.join()
+            self._clear_leds()  # Clear LEDs when stopping attract mode
+
+    def _run_attract_mode(self):
+        """
+        Run the attract mode patterns in the queue.
+        """
+        patterns = {
+            'left_to_right': self._pattern_left_to_right,
+            'right_to_left': self._pattern_right_to_left,
+            'top_to_bottom': self._pattern_top_to_bottom,
+            'bottom_to_top': self._pattern_bottom_to_top,
+            'radial_clockwise': self._pattern_radial_clockwise,
+            'radial_anticlockwise': self._pattern_radial_anticlockwise,
+            'circular_outward': self._pattern_circular_outward,
+            'circular_inward': self._pattern_circular_inward,
+        }
+
+        while not self._attract_mode_stop_event.is_set():
+            pattern_name, pattern_params = self._pattern_queue[self._current_pattern_index]
+            pattern_func = patterns.get(pattern_name)
+            if pattern_func:
+                pattern_func(**pattern_params)
+            else:
+                print(f"Pattern '{pattern_name}' not recognized.")
+            self._current_pattern_index = (self._current_pattern_index + 1) % len(self._pattern_queue)
+
+    def _clear_leds(self):
+        """
+        Clear all LEDs by setting them to off.
+        """
+        with self._lock:
+            for led_status in self.led_statuses:
+                led_status.mode = 'normal'
+                led_status.color_to = RGBl(0, 0, 0, 0)
+
+    # Updated pattern methods with color_on and color_off parameters
+    def _pattern_left_to_right(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = sorted(set(coord[0] for coord in self.coord_map.keys()))
+        y_values = sorted(set(coord[1] for coord in self.coord_map.keys()))
+
+        min_x, max_x = min(x_values), max(x_values) + 1
+        min_y, max_y = min(y_values), max(y_values) + 1
+
+        # First loop: Turn on LEDs
+        for column in range(min_x, max_x):
+            for row in range(min_y, max_y):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Second loop: Reset LEDs
+        for column in range(min_x, max_x):
+            for row in range(min_y, max_y):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    def _pattern_right_to_left(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = sorted(set(coord[0] for coord in self.coord_map.keys()))
+        y_values = sorted(set(coord[1] for coord in self.coord_map.keys()))
+
+        min_x, max_x = min(x_values), max(x_values) + 1
+        min_y, max_y = min(y_values), max(y_values) + 1
+
+        # First loop: Turn on LEDs
+        for column in reversed(range(min_x, max_x)):
+            for row in range(min_y, max_y):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Second loop: Reset LEDs
+        for column in reversed(range(min_x, max_x)):
+            for row in range(min_y, max_y):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    def _pattern_top_to_bottom(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = sorted(set(coord[0] for coord in self.coord_map.keys()))
+        y_values = sorted(set(coord[1] for coord in self.coord_map.keys()))
+
+        min_x, max_x = min(x_values), max(x_values) + 1
+        min_y, max_y = min(y_values), max(y_values) + 1
+
+        # First loop: Turn on LEDs
+        for row in range(min_y, max_y):
+            for column in range(min_x, max_x):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Second loop: Reset LEDs
+        for row in range(min_y, max_y):
+            for column in range(min_x, max_x):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    def _pattern_bottom_to_top(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = sorted(set(coord[0] for coord in self.coord_map.keys()))
+        y_values = sorted(set(coord[1] for coord in self.coord_map.keys()))
+
+        min_x, max_x = min(x_values), max(x_values) + 1
+        min_y, max_y = min(y_values), max(y_values) + 1
+
+        # First loop: Turn on LEDs
+        for row in reversed(range(min_y, max_y)):
+            for column in range(min_x, max_x):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Second loop: Reset LEDs
+        for row in reversed(range(min_y, max_y)):
+            for column in range(min_x, max_x):
+                coord = (column, row)
+                if coord in self.coord_map:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    # Implement radial and circular patterns with parameters
+    def _pattern_circular_outward(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        # Calculate the center of the playfield
+        x_values = [coord[0] for coord in self.coord_map.keys()]
+        y_values = [coord[1] for coord in self.coord_map.keys()]
+        center_x = (min(x_values) + max(x_values)) / 2
+        center_y = (min(y_values) + max(y_values)) / 2
+
+        # Calculate distances from the center for all coordinates
+        coord_distances = {}
+        for coord in self.coord_map.keys():
+            dx = coord[0] - center_x
+            dy = coord[1] - center_y
+            distance = math.hypot(dx, dy)
+            coord_distances[coord] = distance
+
+        # Sort coordinates by distance
+        sorted_coords = sorted(coord_distances.items(), key=lambda item: item[1])
+
+        # Animate LEDs based on distance
+        max_distance = max(coord_distances.values())
+        num_steps = int(max_distance) + 1
+
+        for step in range(num_steps):
+            for coord, distance in sorted_coords:
+                if int(distance) == step:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+        time.sleep(0.2)
+        # Turn off LEDs in reverse order
+        for step in range(num_steps):
+            for coord, distance in sorted_coords:
+                if int(distance) == step:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+
+    def _pattern_circular_inward(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.1):
+        # Calculate the center of the playfield
+        x_values = [coord[0] for coord in self.coord_map.keys()]
+        y_values = [coord[1] for coord in self.coord_map.keys()]
+        center_x = (min(x_values) + max(x_values)) / 2
+        center_y = (min(y_values) + max(y_values)) / 2
+
+        # Calculate distances from the center for all coordinates
+        coord_distances = {}
+        for coord in self.coord_map.keys():
+            dx = coord[0] - center_x
+            dy = coord[1] - center_y
+            distance = math.hypot(dx, dy)
+            coord_distances[coord] = distance
+
+        # Sort coordinates by distance
+        sorted_coords = sorted(coord_distances.items(), key=lambda item: item[1])
+
+        # Animate LEDs based on distance
+        max_distance = max(coord_distances.values())
+        num_steps = int(max_distance) + 1
+
+        for step in reversed(range(num_steps)):
+            for coord, distance in sorted_coords:
+                if int(distance) == step:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+        time.sleep(0.2)
+        # Turn off LEDs in reverse order
+        for step in reversed(range(num_steps)):
+            for coord, distance in sorted_coords:
+                if int(distance) == step:
+                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+
+    # Implement radial patterns
+    def _pattern_radial_clockwise(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = [coord[0] for coord in self.coord_map.keys()]
+        y_values = [coord[1] for coord in self.coord_map.keys()]
+        center_x = (min(x_values) + max(x_values)) / 2
+        center_y = (min(y_values) + max(y_values)) / 2
+
+        # Calculate angles
+        coord_angles = {}
+        for coord in self.coord_map.keys():
+            dx = coord[0] - center_x
+            dy = coord[1] - center_y
+            angle = (math.atan2(dy, dx) + 2 * math.pi) % (2 * math.pi)
+            coord_angles[coord] = angle
+
+        # Sort coordinates by angle
+        sorted_coords = sorted(coord_angles.items(), key=lambda item: item[1])
+
+        # Animate LEDs based on angle
+        for coord, angle in sorted_coords:
+            self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Turn off LEDs
+        for coord, angle in sorted_coords:
+            self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    def _pattern_radial_anticlockwise(self, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+        x_values = [coord[0] for coord in self.coord_map.keys()]
+        y_values = [coord[1] for coord in self.coord_map.keys()]
+        center_x = (min(x_values) + max(x_values)) / 2
+        center_y = (min(y_values) + max(y_values)) / 2
+
+        # Calculate angles
+        coord_angles = {}
+        for coord in self.coord_map.keys():
+            dx = coord[0] - center_x
+            dy = coord[1] - center_y
+            angle = (math.atan2(dy, dx) + 2 * math.pi) % (2 * math.pi)
+            coord_angles[coord] = angle
+
+        # Sort coordinates by angle
+        sorted_coords = sorted(coord_angles.items(), key=lambda item: item[1])
+
+        # Animate LEDs based on angle
+        for coord, angle in reversed(sorted_coords):
+            self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+        time.sleep(0.2)
+        # Turn off LEDs
+        for coord, angle in reversed(sorted_coords):
+            self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
+            time.sleep(delay)
+            if self._attract_mode_stop_event.is_set():
+                return
+
+    # Existing methods continued...
 
     def set_led_mode(self, led_number, mode, color_to=None, color_from=None, transition_time=None):
         """
