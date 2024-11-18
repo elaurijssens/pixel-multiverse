@@ -51,10 +51,12 @@ plasma_buttons.set_led_mode(
 
 # Start an attract mode with a pattern queue
 pattern_queue = [
-    ('left_to_right', {'color_on': RGBl(31, 0, 0, 5), 'color_off': RGBl(0, 31, 0, 5), 'delay': 0.05}),
-    ('right_to_left', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.05}),
+    ('linear', {'direction': 'left_to_right', 'color_on': RGBl(31, 0, 0, 5), 'color_off': RGBl(0, 0, 0, 0), 'delay': 0.05}),
+    ('circular', {'direction': 'outward', 'color_on': RGBl(0, 31, 0, 5), 'color_off': RGBl(0, 0, 0, 0), 'delay': 0.1}),
+    ('radial', {'direction': 'clockwise', 'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(0, 0, 0, 0), 'delay': 0.05}),
     # Add more patterns as needed
 ]
+
 
 plasma_buttons.start_attract_mode(pattern_queue)
 
@@ -113,19 +115,23 @@ plasma_buttons = PlasmaButtons(
 
 #### **Attract Mode Patterns:**
 
-The attract mode supports several built-in patterns:
+The attract mode supports several built-in patterns with directions:
 
-- `'left_to_right'`
-- `'right_to_left'`
-- `'top_to_bottom'`
-- `'bottom_to_top'`
-- `'radial_clockwise'`
-- `'radial_anticlockwise'`
-- `'circular_outward'`
-- `'circular_inward'`
+- `'linear'`
+  - `'left_to_right'`
+  - `'right_to_left'`
+  - `'top_to_bottom'`
+  - `'bottom_to_top'`
+- `'radial'`
+  - `'clockwise'`
+  - `'anticlockwise'`
+- `'circular'`
+  - `'outward'`
+  - `'inward'`
 
 Each pattern method accepts parameters:
 
+- `direction`: a diretion tht is valid for the pattern
 - `color_on`: The color to set LEDs to during activation.
 - `color_off`: The color to set LEDs to during reset (default is off).
 - `delay`: Delay between steps in the pattern (controls speed).
