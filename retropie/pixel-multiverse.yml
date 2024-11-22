@@ -12,7 +12,7 @@ marquee:
     - png
     - jpg
   create_placeholders: True # Set to True if you want to know which images you"re missing
-  default_image: /opt/pixel-multiverse/default.png
+  default_image: /opt/pixel-multiverse/images
 buttons:
   enabled: True
   connection: /dev/plasmabuttons # Tip: use udev to create an alias
@@ -243,3 +243,28 @@ buttons:
       value: 94
     - coord: [ 68, 5 ]
       value: 95
+  attract_program:
+    - pattern: linear
+      params:
+        direction: left_to_right
+        color_on: [ 31, 0, 0, 5 ]
+        color_off: [ 0, 31, 0, 5 ]
+        delay: 0.02
+    - pattern: circular
+      params:
+        direction: outward
+        color_on: [ 0, 0, 31, 5 ]
+        color_off: [ 31, 31, 0, 5 ]
+        delay: 0.05
+    - pattern: radial
+      params:
+        direction: clockwise
+        color_on: [ 31, 31, 0, 5 ]
+        color_off: [ 0, 0, 0, 0 ]
+        delay: 0.02
+    - pattern: linear
+      params:
+        direction: top_to_bottom
+        color_on: [ 0, 31, 31, 5 ]
+        color_off: [ 31, 0, 31, 5 ]
+        delay: 0.02

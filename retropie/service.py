@@ -55,6 +55,38 @@ def load_configuration():
         sys.exit(1)
 
 
+def load_pattern_queue_from_yaml(yaml_config):
+    """
+    Load the pattern queue configuration from a YAML file.
+
+    :param yaml_config: full yaml configuration
+    :return: A list of patterns usable by the PlasmaButtons class.
+    """
+
+    local_pattern_queue = []
+
+    for pattern_config in yaml_config.get('buttons', {}).get('attract_program', []):
+        pattern_name = pattern_config.get('pattern')
+        params = pattern_config.get('params', {})
+
+        # Parse color_on and color_off if they exist
+        if 'color_on' in params:
+            params['color_on'] = RGBl(*params['color_on'])
+        if 'color_off' in params:
+            params['color_off'] = RGBl(*params['color_off'])
+        else:
+            # If color_off is not specified, default to off
+            params['color_off'] = RGBl(0, 0, 0, 0)
+
+        # Ensure delay is a float
+        if 'delay' in params:
+            params['delay'] = float(params['delay'])
+
+        local_pattern_queue.append((pattern_name, params))
+
+    return local_pattern_queue
+
+
 # Initialize buttons
 def initialize_buttons(config):
     button_config = config.get("buttons", {})
@@ -226,7 +258,7 @@ def overlay_text_on_image_in_memory(
         raise
 
 
-def search_and_display_image(marquee, system_name="none", game_name=None, rom_path=None):
+def search_and_display_image(marquee, system_name="", game_name=None, rom_path=None, ui_image="default.png"):
     """
     Search and display an image based on system_name and game_name, with placeholder creation.
 
@@ -235,6 +267,7 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
         game_name (str): Name of the game (can be None).
         marquee (LedMatrix): Marquee object to display the image.
         rom_path (str): Path to the ROM file. If provided, ensures it is a file before creating a placeholder.
+        ui_image (str): Name of de default image that should be used. Useful for
 
     Returns:
         bool: True if an image was successfully displayed, False otherwise.
@@ -243,7 +276,7 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
     image_extensions = configuration.get("marquee", {}).get("image_extensions", ["gif", "png", "jpg"])
     create_placeholders = str(configuration.get("marquee", {}).
                               get("create_placeholders", "false")).strip().lower() == "true"
-    default_image_path = configuration.get("marquee", {}).get("default_image", "/opt/pixel-multiverse/default.png")
+    default_image_path = configuration.get("marquee", {}).get("default_image", "/opt/pixel-multiverse/images")
 
     # Get display info from the mapping
     display_type = configuration.get("marquee", {}).get("type", "").upper()
@@ -262,9 +295,9 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
     system_path = os.path.join(image_path, system_name)
 
     # Search for game-specific image
-    if game_name:
+    if rom_path:
         for ext in image_extensions:
-            game_image_path = os.path.join(system_path, f"{game_name}.{ext}")
+            game_image_path = os.path.join(system_path, f"{rom_path}.{ext}")
             if os.path.exists(game_image_path):
                 try:
                     marquee.display_image(game_image_path, rescale=True)
@@ -276,12 +309,11 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
 
         # No specific game image found; create placeholder if enabled
         if create_placeholders:
-            placeholder_path = os.path.join(system_path, f"{game_name}.txt")
+            placeholder_path = os.path.join(system_path, f"{rom_path}.txt")
             if not os.path.exists(placeholder_path):
                 try:
                     if not os.path.exists(system_path):
                         os.makedirs(system_path, exist_ok=True)
-                        os.chmod(system_path, 0o777)
 
                     placeholder_data = {"system_name": system_name, "game_name": game_name}
                     if rom_path and os.path.isfile(rom_path):
@@ -315,7 +347,8 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
 
     # Fallback to default image
     try:
-        with Image.open(default_image_path) as default_image:
+        ui_image_path = os.path.join(default_image_path, ui_image)
+        with Image.open(ui_image_path) as default_image:
             if resolution == "hi-res" and max_width:
                 overlayed_path = overlay_text_on_image_in_memory(
                     default_image, game_name or system_name, temp_file_base, max_width=max_width
@@ -332,37 +365,57 @@ def search_and_display_image(marquee, system_name="none", game_name=None, rom_pa
 
 def handle_quit_event(arguments):
     logger.info("Handling 'quit' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee, ui_image="default.png")
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_reboot_event(arguments):
     logger.info("Handling 'reboot' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee,ui_image="reboot.png")
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_shutdown_event(arguments):
     logger.info("Handling 'shutdown' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee, ui_image="shutdown.png")
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_config_changed_event(arguments):
     logger.info("Handling 'config-changed' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
-
+    if marquee:
+        search_and_display_image(marquee)
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 def handle_controls_changed_event(arguments):
     logger.info("Handling 'controls-changed' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee, ui_image="controlschanged.png")
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_settings_changed_event(arguments):
     logger.info("Handling 'settings-changed' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee, ui_image="settingschanged.png")
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_theme_changed_event(arguments):
     logger.info("Handling 'theme-changed' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee)
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 
 def handle_game_start_event(arguments):
@@ -376,26 +429,39 @@ def handle_game_start_event(arguments):
         success = search_and_display_image(system_name=system_name, game_name=game_name, marquee=marquee)
         if not success:
             logger.error("Failed to display image for 'screensaver-game-select'.")
-
+    if buttons and buttons.attract_mode_active():
+        buttons.stop_attract_mode()
 
 def handle_game_end_event(arguments):
     logger.info("Handling 'game-end' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee)
+    if buttons:
+        buttons.stop_attract_mode()
+        buttons.set_all_leds(mode="normal", color_to=RGBl(0, 0, 0, 0), )
 
 
 def handle_sleep_event(arguments):
     logger.info("Handling 'sleep' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
-
+    if marquee:
+        search_and_display_image(marquee, ui_image="sleep.png")
+    if buttons:
+        buttons.stop_attract_mode()
+        buttons.set_all_leds(mode="normal", color_to=RGBl(0, 0, 0, 0), )
 
 def handle_wake_event(arguments):
     logger.info("Handling 'wake' event with arguments: %s", arguments)
     search_and_display_image(marquee)
+    if marquee:
+        search_and_display_image(marquee, ui_image="sleep.png")
+    if buttons:
+        buttons.stop_attract_mode()
 
 
 def handle_screensaver_start_event(arguments):
     logger.info("Handling 'screensaver-start' event with arguments: %s", arguments)
-    search_and_display_image(marquee)
+    if buttons:
+        buttons.start_attract_mode(pattern_queue=load_pattern_queue_from_yaml(configuration))
 
 
 def handle_screensaver_stop_event(arguments):
@@ -518,14 +584,14 @@ if __name__ == "__main__":
     buttons = initialize_buttons(configuration)
 
     pattern_queue = [
-        ('left_to_right', {'color_on': RGBl(31, 0, 0, 5), 'color_off': RGBl(0, 31, 0, 5), 'delay': 0.01}),
-        ('right_to_left', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
-        ('top_to_bottom', {'color_on': RGBl(31, 31, 31, 5), 'color_off': RGBl(15, 15, 15, 5), 'delay': 0.01}),
-        ('bottom_to_top', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 0, 31, 5), 'delay': 0.01}),
-        ('circular_outward', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
-        ('radial_clockwise', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01}),
-        ('circular_inward', {'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
-        ('radial_anticlockwise', {'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01})
+        ('linear', {'direction': 'left_to_right', 'color_on': RGBl(31, 0, 0, 5), 'color_off': RGBl(0, 31, 0, 5), 'delay': 0.01}),
+        ('linear', {'direction': 'top_to_bottom', 'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('linear', {'direction': 'right_to_left', 'color_on': RGBl(31, 31, 31, 5), 'color_off': RGBl(15, 15, 15, 5), 'delay': 0.01}),
+        ('linear', {'direction': 'bottom_to_top', 'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 0, 31, 5), 'delay': 0.01}),
+        ('circular', {'direction': 'inward', 'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('radial', {'direction': 'clockwise', 'color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01}),
+        ('circular', {'direction': 'outward', 'color_on': RGBl(0, 31, 31, 5), 'color_off': RGBl(31, 31, 0, 5), 'delay': 0.01}),
+        ('radial', {'direction': 'anticlockwise','color_on': RGBl(0, 0, 31, 5), 'color_off': RGBl(31, 31, 31, 5), 'delay': 0.01})
         # Add other patterns as needed
     ]
 
