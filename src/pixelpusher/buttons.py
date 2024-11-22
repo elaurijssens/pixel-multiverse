@@ -69,7 +69,7 @@ class PlasmaButtons:
             self._attract_mode_running = False
             self._attract_mode_stop_event.set()
             self._attract_mode_thread.join()
-            self._clear_leds()  # Clear LEDs when stopping attract mode
+            self.set_all_leds()  # Clear LEDs when stopping attract mode
 
     def attract_mode_active(self):
         return self._attract_mode_running
@@ -93,17 +93,8 @@ class PlasmaButtons:
                 print(f"Pattern '{pattern_name}' not recognized.")
             self._current_pattern_index = (self._current_pattern_index + 1) % len(self._pattern_queue)
 
-    def _clear_leds(self):
-        """
-        Clear all LEDs by setting them to off.
-        """
-        with self._lock:
-            for led_status in self.led_statuses:
-                led_status.mode = 'normal'
-                led_status.color_to = RGBl(0, 0, 0, 0)
-
     # Generalized linear pattern method
-    def _pattern_linear(self, direction, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
+    def _pattern_linear(self, direction, color_on=RGBl(31, 31, 31, 5), color_off=None, delay=0.05):
         """
         Generalized method for linear patterns.
 
@@ -146,6 +137,9 @@ class PlasmaButtons:
             outer_coord_index = 1  # y-coordinate
             inner_coord_index = 0  # x-coordinate
 
+        if color_off:
+            self.set_all_leds(color_to=color_off)
+
         # First loop: Turn on LEDs
         for outer in outer_range:
             for inner in inner_range:
@@ -159,18 +153,6 @@ class PlasmaButtons:
             if self._attract_mode_stop_event.is_set():
                 return
         time.sleep(0.2)
-        # Second loop: Reset LEDs
-        for outer in outer_range:
-            for inner in inner_range:
-                coord = [0, 0]
-                coord[outer_coord_index] = outer
-                coord[inner_coord_index] = inner
-                coord = tuple(coord)
-                if coord in self.coord_map:
-                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
-            time.sleep(delay)
-            if self._attract_mode_stop_event.is_set():
-                return
 
     # Implement radial and circular patterns with parameters
     def _pattern_circular(self, direction, color_on=RGBl(31, 31, 31, 5), color_off=RGBl(0, 0, 0, 0), delay=0.05):
@@ -211,20 +193,14 @@ class PlasmaButtons:
             print(f"Direction '{direction}' not recognized for circular pattern.")
             return
 
+        if color_off:
+            self.set_all_leds(color_to=color_off)
+
         # First loop: Activate LEDs based on distance
         for step in steps_range:
             for coord, distance in sorted_coords:
                 if int(distance) == step:
                     self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
-            time.sleep(delay)
-            if self._attract_mode_stop_event.is_set():
-                return
-        time.sleep(0.2)
-        # Second loop: Reset LEDs based on distance
-        for step in steps_range:
-            for coord, distance in sorted_coords:
-                if int(distance) == step:
-                    self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
             time.sleep(delay)
             if self._attract_mode_stop_event.is_set():
                 return
@@ -247,21 +223,15 @@ class PlasmaButtons:
         # Sort coordinates by angle
         sorted_coords = sorted(coord_angles.items(), key=lambda item: item[1], reverse=(direction == 'anticlockwise'))
 
+        if color_off:
+            self.set_all_leds(color_to=color_off)
+
         # First loop: Turn on LEDs
         for coord, angle in sorted_coords:
             self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_on)
             time.sleep(delay)
             if self._attract_mode_stop_event.is_set():
                 return
-        time.sleep(0.5)
-        # Second loop: Reset LEDs
-        for coord, angle in sorted_coords:
-            self.set_led_mode_by_coord(coord=coord, mode="normal", color_to=color_off)
-            time.sleep(delay)
-            if self._attract_mode_stop_event.is_set():
-                return
-
-    # Existing methods continued...
 
     def set_led_mode(self, led_number, mode, color_to=None, color_from=None, transition_time=None):
         """
@@ -295,8 +265,7 @@ class PlasmaButtons:
             led_status.transition_time = transition_time if transition_time else led_status.transition_time
             led_status.ticks_since_last_transition = 0  # Reset tick counter
 
-
-    def set_all_leds(self, mode, color_to=None, color_from=None, transition_time=None):
+    def set_all_leds(self, mode="normal", color_to=None, color_from=None, transition_time=None):
         for led in range(0, self.num_leds):
             self.set_led_mode(led, mode=mode, color_to=color_to, color_from=color_from, transition_time=transition_time)
 
