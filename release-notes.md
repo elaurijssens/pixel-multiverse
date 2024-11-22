@@ -1,16 +1,22 @@
 # Release Notes
 
+## Version 0.5.2 (Nov 22, 2024)
+- **Fixes and Enhancements:**
+  - Change attract mode - remove double loop as we can do this ourselves
+- **Maintenance:**
+  - Bumped version to 0.5.2.
+
 ## Version 0.5.1 (Nov 18, 2024)
 - **Fixes and Enhancements:**
   - Add attract mode status check method
 - **Maintenance:**
-  - Bumped version to 0.4.0.
+  - Bumped version to 0.5.1.
 
 ## Version 0.5.0 (Nov 18, 2024)
 - **Breaking change:**
   - Deduplicate methods
 - **Maintenance:**
-  - Bumped version to 0.4.0.
+  - Bumped version to 0.5.0.
 
 ## Version 0.4.0 (Nov 18, 2024)
 - **Fixes and Enhancements:**
