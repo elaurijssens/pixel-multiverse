@@ -1,0 +1,273 @@
+general:
+  logging:
+    level: INFO
+marquee:
+  enabled: True
+  #type: i75_128x32 # use DISPLAY_GALACTIC_UNICORN for Galactic Unicorn
+  type: galactic_unicorn
+  #color_order: GBR # galactic unicorn is BGR
+  color_order: BGR
+  #connection: /dev/i75 # Tip: use udev to create an alias
+  connection: /dev/unicorn
+  image_path: /userdata/pixel_multiverse/visuals/marquee
+  image_extensions:
+    - gif
+    - png
+    - jpg
+  create_placeholders: True # Set to True if you want to know which images you're missing
+  default_image: /userdata/pixel_multiverse/images
+buttons:
+  enabled: True
+  connection: /dev/plasmabuttons # Tip: use udev to create an alias
+  map_path: /userdata/pixel_multiverse/visuals/buttons
+  num_leds: 128
+  refresh_rate: 60
+  button_map:
+    P1:START: 14
+    P1:A: 13
+    P1:B: 11
+    P1:X: 9
+    P1:Y: 7
+    P1:L1: 12
+    P1:L2: 15
+    P1:R1: 8
+    P1:R2: 18
+    P1:SELECT: 10
+    P1:L3: 16
+    P1:R3: 17
+    P1:HOTKEY: 24
+    P1:X1: 29
+    P1:X2: 26
+    P2:START: 19
+    P2:A: 6
+    P2:B: 4
+    P2:X: 2
+    P2:Y: 0
+    P2:L1: 5
+    P2:L2: 20
+    P2:R1: 1
+    P2:R2: 23
+    P2:SELECT: 3
+    P2:L3: 21
+    P2:R3: 22
+    P2:HOTKEY: 25
+    P2:X1: 28
+    P2:X2: 27
+  led_map:
+    - coord: [ 68, 14 ]
+      value: 0
+    - coord: [ 65, 12 ]
+      value: 1
+    - coord: [ 63, 15 ]
+      value: 2
+    - coord: [ 66, 17 ]
+      value: 3
+    - coord: [ 67, 7 ]
+      value: 4
+    - coord: [ 64, 5 ]
+      value: 5
+    - coord: [ 62, 8 ]
+      value: 6
+    - coord: [ 65, 10 ]
+      value: 7
+    - coord: [ 62, 16 ]
+      value: 8
+    - coord: [ 59, 14 ]
+      value: 9
+    - coord: [ 57, 17 ]
+      value: 10
+    - coord: [ 60, 19 ]
+      value: 11
+    - coord: [ 61, 9 ]
+      value: 12
+    - coord: [ 58, 7 ]
+      value: 13
+    - coord: [ 56, 10 ]
+      value: 14
+    - coord: [ 59, 12 ]
+      value: 15
+    - coord: [ 56, 18 ]
+      value: 16
+    - coord: [ 53, 16 ]
+      value: 17
+    - coord: [ 51, 19 ]
+      value: 18
+    - coord: [ 54, 21 ]
+      value: 19
+    - coord: [ 55, 11 ]
+      value: 20
+    - coord: [ 52, 9 ]
+      value: 21
+    - coord: [ 50, 12 ]
+      value: 22
+    - coord: [ 53, 14 ]
+      value: 23
+    - coord: [ 55, 25 ]
+      value: 24
+    - coord: [ 52, 23 ]
+      value: 25
+    - coord: [ 50, 26 ]
+      value: 26
+    - coord: [ 53, 28 ]
+      value: 27
+    - coord: [ 31, 19 ]
+      value: 28
+    - coord: [ 29, 16 ]
+      value: 29
+    - coord: [ 26, 18 ]
+      value: 30
+    - coord: [ 28, 21 ]
+      value: 31
+    - coord: [ 33, 13 ]
+      value: 32
+    - coord: [ 31, 10 ]
+      value: 33
+    - coord: [ 28, 12 ]
+      value: 34
+    - coord: [ 30, 15 ]
+      value: 35
+    - coord: [ 25, 19 ]
+      value: 36
+    - coord: [ 23, 16 ]
+      value: 37
+    - coord: [ 20, 18 ]
+      value: 38
+    - coord: [ 22, 21 ]
+      value: 39
+    - coord: [ 27, 13 ]
+      value: 40
+    - coord: [ 25, 10 ]
+      value: 41
+    - coord: [ 22, 12 ]
+      value: 42
+    - coord: [ 24, 15 ]
+      value: 43
+    - coord: [ 19, 19 ]
+      value: 44
+    - coord: [ 17, 16 ]
+      value: 45
+    - coord: [ 14, 18 ]
+      value: 46
+    - coord: [ 16, 21 ]
+      value: 47
+    - coord: [ 21, 13 ]
+      value: 48
+    - coord: [ 19, 10 ]
+      value: 49
+    - coord: [ 16, 12 ]
+      value: 50
+    - coord: [ 18, 15 ]
+      value: 51
+    - coord: [ 16, 25 ]
+      value: 52
+    - coord: [ 14, 22 ]
+      value: 53
+    - coord: [ 11, 24 ]
+      value: 54
+    - coord: [ 13, 27 ]
+      value: 55
+    - coord: [ 4, 3 ]
+      value: 56
+    - coord: [ 2, 1 ]
+      value: 57
+    - coord: [ 0, 3 ]
+      value: 58
+    - coord: [ 2, 5 ]
+      value: 59
+    - coord: [ 13, 3 ]
+      value: 60
+    - coord: [ 11, 1 ]
+      value: 61
+    - coord: [ 9, 3 ]
+      value: 62
+    - coord: [ 11, 5 ]
+      value: 63
+    - coord: [ 19, 3 ]
+      value: 64
+    - coord: [ 17, 1 ]
+      value: 65
+    - coord: [ 15, 3 ]
+      value: 66
+    - coord: [ 17, 5 ]
+      value: 67
+    - coord: [ 25, 3 ]
+      value: 68
+    - coord: [ 23, 1 ]
+      value: 69
+    - coord: [ 21, 3 ]
+      value: 70
+    - coord: [ 23, 5 ]
+      value: 71
+    - coord: [ 31, 3 ]
+      value: 72
+    - coord: [ 29, 1 ]
+      value: 73
+    - coord: [ 27, 3 ]
+      value: 74
+    - coord: [ 29, 5 ]
+      value: 75
+    - coord: [ 43, 3 ]
+      value: 76
+    - coord: [ 41, 1 ]
+      value: 77
+    - coord: [ 39, 3 ]
+      value: 78
+    - coord: [ 41, 5 ]
+      value: 79
+    - coord: [ 52, 3 ]
+      value: 80
+    - coord: [ 50, 1 ]
+      value: 81
+    - coord: [ 48, 3 ]
+      value: 82
+    - coord: [ 50, 5 ]
+      value: 83
+    - coord: [ 58, 3 ]
+      value: 84
+    - coord: [ 56, 1 ]
+      value: 85
+    - coord: [ 54, 3 ]
+      value: 86
+    - coord: [ 56, 5 ]
+      value: 87
+    - coord: [ 64, 3 ]
+      value: 88
+    - coord: [ 62, 1 ]
+      value: 89
+    - coord: [ 60, 3 ]
+      value: 90
+    - coord: [ 62, 5 ]
+      value: 91
+    - coord: [ 70, 3 ]
+      value: 92
+    - coord: [ 68, 1 ]
+      value: 93
+    - coord: [ 66, 3 ]
+      value: 94
+    - coord: [ 68, 5 ]
+      value: 95
+  attract_program:
+    - pattern: linear
+      params:
+        direction: left_to_right
+        color_on: [ 31, 0, 0, 5 ]
+        color_off: [ 0, 31, 0, 5 ]
+        delay: 0.02
+    - pattern: circular
+      params:
+        direction: outward
+        color_on: [ 0, 0, 31, 5 ]
+        color_off: [ 31, 31, 0, 5 ]
+        delay: 0.05
+    - pattern: radial
+      params:
+        direction: clockwise
+        color_on: [ 31, 31, 0, 5 ]
+        color_off: [ 0, 0, 0, 0 ]
+        delay: 0.02
+    - pattern: linear
+      params:
+        direction: top_to_bottom
+        color_on: [ 0, 31, 31, 5 ]
+        color_off: [ 31, 0, 31, 5 ]
+        delay: 0.02
