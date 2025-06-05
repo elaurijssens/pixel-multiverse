@@ -369,7 +369,7 @@ def handle_start_event(arguments):
     if marquee:
         search_and_display_image(marquee, ui_image="default.png")
     if buttons and buttons.attract_mode_active():
-        buttons.start_attract_mode()
+        buttons.start_attract_mode(pattern_queue=load_pattern_queue_from_yaml(configuration))
 
 
 def handle_quit_event(arguments):
@@ -464,7 +464,7 @@ def handle_wake_event(arguments):
     if marquee:
         search_and_display_image(marquee, ui_image="sleep.png")
     if buttons:
-        buttons.start_attract_mode()
+        buttons.start_attract_mode(pattern_queue=load_pattern_queue_from_yaml(configuration))
 
 
 def handle_screensaver_start_event(arguments):
